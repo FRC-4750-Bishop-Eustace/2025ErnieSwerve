@@ -6,6 +6,7 @@
 #
 
 import math
+from warnings import overloaded
 import wpilib
 import wpimath
 import wpilib.drive
@@ -22,6 +23,7 @@ from wpilib import SmartDashboard
 
 
 class MyRobot(wpilib.TimedRobot):
+    @overloaded("Initiate Robot")
     def robotInit(self) -> None:
         """Robot initialization function"""
         self.controller = wpilib.Joystick(variables.joystickPort1)
@@ -44,10 +46,12 @@ class MyRobot(wpilib.TimedRobot):
          
 
     #FUTURE
+    @overloaded("Autonomous Start")
     def autonomousInit(self):
         self.autoSelected = self.chooser.getSelected()
         print("Auto selected:" + self.autoSelected)
 
+    @overloaded("Autonomous Update")
     def autonomousPeriodic(self) -> None:
         self.timer.start()
         match self.autoSelected:
@@ -110,6 +114,7 @@ class MyRobot(wpilib.TimedRobot):
             self.getAuto()
         '''
 
+    @overloaded("Teleop Update")
     def teleopPeriodic(self) -> None:
 
         # CHANGE TO FIELD DRIVE VS BOT RELETIVE

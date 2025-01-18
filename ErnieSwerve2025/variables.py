@@ -16,12 +16,12 @@ backRightZero = 0
 zeroThreshold = wpimath.geometry.Rotation2d(0.3)
 
 # PID and FeedForward
-drivePID_P = 0.02
-drivePID_I = 0
-drivePID_D = 0
-turnPID_P = 2 # 0.06
-turnPID_I = 0
-turnPID_D = 0.00053 #0.000053
+drivePID_kP = 0.02
+drivePID_kI = 0
+drivePID_kD = 0
+turnPID_kP = 5 # 2
+turnPID_kI = 0
+turnPID_kD = 0.008 #0.000053
 driveFF_1 = 1.8
 driveFF_2 = 3
 turnFF_1 = 0.35 #0.05
