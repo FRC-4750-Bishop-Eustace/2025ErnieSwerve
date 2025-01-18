@@ -7,13 +7,22 @@
 import math
 import navx
 import wpilib
+import wpimath.geometry as wpigeom
 import wpimath.geometry
 import wpimath.kinematics
+import navx.src
+import navx.src.rpy
 import swervemodule
 import variables
 import pathplannerlib.auto
 from pathplannerlib.auto import AutoBuilder
 from pathplannerlib.config import HolonomicPathFollowerConfig, ReplanningConfig, PIDConstants
+import limelight
+import json
+import time
+import limelight.limelight as lh
+from navx import AHRS
+from wpimath.estimator import SwerveDrive6PoseEstimator
 
 '''
 kMaxSpeed = 1.5  # meters per second
@@ -54,7 +63,6 @@ class Drivetrain:
         self.backRight = swervemodule.SwerveModule(variables.backRightDriveController, variables.backRightTurnController, variables.backRightDriveEncoder, variables.backRightTurnEncoder)
         self.backLeft = swervemodule.SwerveModule(variables.backLeftDriveController, variables.backLeftTurnController, variables.backLeftDriveEncoder, variables.backLeftTurnEncoder)
 
-
         '''
         BERT NOTES:
         
@@ -89,12 +97,12 @@ class Drivetrain:
 
         '''
 
-        #self.gyro = wpilib.AnalogGyro(0)
+        self.gyro = wpilib.AnalogGyro(0)
         self.angler = navx.AHRS.create_spi()
-        #print("gyroscope = ", self.angler)
-        self.gyroinit = 0 #self.angler.getAngle()
+        print("gyroscope = ", self.angler)
+        self.gyroinit = self.angler.getAngle()
         self.gyroradiansinit = wpimath.units.degreesToRadians(self.gyroinit)
-        # print("gyro", self.gyro)
+        print("gyro", self.gyro)
 
         #NOTE: Just defining the fixed kinematics of the bot
         self.kinematics = wpimath.kinematics.SwerveDrive4Kinematics(
@@ -104,22 +112,11 @@ class Drivetrain:
             self.backLeftLocation,
         )
 
+        self.initialPose = wpimath.geometry.Pose2d()
+
         #NOTE: getPosition - need to determine position value - velocity and angle -
         #NOTE: Need to understand expected units/values returned - is it meters & radians?
-        self.odometry = wpimath.kinematics.SwerveDrive4Odometry(
-            self.kinematics,
-            wpimath.geometry.Rotation2d(self.gyroradiansinit),
-            #self.angler.getAngle(),
-            #self.angler.getRotation2d(),
-            #self.gyro.Translation2d(),
-            #self.gyro.getRotation2d(),
-            (
-                self.frontLeft.getPosition(),
-                self.frontRight.getPosition(),
-                self.backRight.getPosition(),
-                self.backLeft.getPosition(),
-            ),
-        )
+        self.estimator = SwerveDrive6PoseEstimator(self.kinematics, self.gyro.getRotation2d(), [self.frontLeft.getPosition(), self.frontRight.getPosition(), self.backLeft.getPosition(), self.backRight.getPosition], self.initialPose)
 
         self.angler.reset()
     
@@ -172,17 +169,18 @@ class Drivetrain:
         print(swerveModuleStates[0])
 
     # CURRENLY NOT BEING USED
-    def updateOdometry(self) -> None:
+    def updateOdometry(self, useAprilTags: bool) -> None:
         """Updates the field relative position of the robot."""
-        self.odometry.update(
-            wpimath.geometry.Rotation2d(self.gyroradiansinit),
-            (
-                self.frontLeft.getPosition(),
-                self.frontRight.getPosition(),
-                self.backRight.getPosition(),
-                self.backLeft.getPosition(),
-            ),
-        )
+        self.estimator.update(self.gyro.getRotation2d(), [self.frontLeft.getPosition(), self.frontRight.getPosition(), self.backLeft.getPosition(), self.backRight.getPosition])
+
+        # Find discoverable Limelight cameras
+        if useAprilTags and limelight.discover_limelights(debug=True):
+            lh.setRobotOrientation("limelight", self.estimator.getEstimatedPosition().rotation().degrees(), 0, 0, 0, 0, 0)
+            mt2 = lh.getRobotPoseEstimateBlueMT2("limelight")
+
+            if not math.abs(self.gyro.getRate()) > 720 or not mt2.tagCount == 0:
+                self.estimator.setVisionMeasurementStdDevs([0.7, 0.7, 9999999])
+                self.estimator.addVisionMeasurement(mt2.pose, mt2.timestamp)
     
     def alignment(self) -> None:
         self.frontLeft.setDesiredState(wpimath.kinematics.SwerveModuleState(0, wpimath.geometry.Rotation2d(0)))
@@ -195,5 +193,3 @@ class Drivetrain:
         self.frontRight.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
         self.backRight.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
         self.backLeft.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
-
-

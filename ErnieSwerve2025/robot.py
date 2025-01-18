@@ -97,7 +97,7 @@ class MyRobot(wpilib.TimedRobot):
         '''
         self.timer.start()
         #self.driveWithJoystick(False)
-        self.swerve.updateOdometry()
+        self.swerve.updateOdometry(True)
         #self.swerve.autoTest()
         if 2.0 < self.timer.get():
             self.stopAuto()
@@ -139,7 +139,7 @@ class MyRobot(wpilib.TimedRobot):
         # negative values when we push forward.
         # NOTE: Check if we need inversion here
         if fieldRelative:
-            self.swerve.updateOdometry()
+            self.swerve.updateOdometry(True)
 
         xSpeed = (
             self.xspeedLimiter.calculate(
