@@ -6,23 +6,25 @@
 
 import math
 import navx
+import pathplannerlib.path
+import pathplannerlib.pathfinding
+import pathplannerlib.trajectory
 import wpilib
-import wpimath.geometry as wpigeom
+import wpimath.geometry
 import wpimath.geometry
 import wpimath.kinematics
 import navx.src
 import navx.src.rpy
+import wpimath.trajectory
 import swervemodule
 import variables
-import pathplannerlib.auto
 from pathplannerlib.auto import AutoBuilder
 from pathplannerlib.config import HolonomicPathFollowerConfig, ReplanningConfig, PIDConstants
 import limelight
-import json
-import time
 import limelight.limelight as lh
 from navx import AHRS
 from wpimath.estimator import SwerveDrive6PoseEstimator
+import pathplannerlib.pathfinders as pathfinder
 
 '''
 kMaxSpeed = 1.5  # meters per second
@@ -168,6 +170,9 @@ class Drivetrain:
 
         print(swerveModuleStates[0])
 
+    def stop(self) -> None:
+        self.drive(0, 0, 0, False, 0.02)
+
     # CURRENLY NOT BEING USED
     def updateOdometry(self, useAprilTags: bool) -> None:
         """Updates the field relative position of the robot."""
@@ -175,7 +180,7 @@ class Drivetrain:
 
         # Find discoverable Limelight cameras
         if useAprilTags and limelight.discover_limelights(debug=True):
-            lh.setRobotOrientation("limelight", self.estimator.getEstimatedPosition().rotation().degrees(), 0, 0, 0, 0, 0)
+            lh.setRobotOrientation("limelight", self.getRotation().degrees(), 0, 0, 0, 0, 0)
             mt2 = lh.getRobotPoseEstimateBlueMT2("limelight")
 
             if not math.abs(self.gyro.getRate()) > 720 or not mt2.tagCount == 0:
@@ -193,3 +198,45 @@ class Drivetrain:
         self.frontRight.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
         self.backRight.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
         self.backLeft.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
+
+    def getPose(self) -> wpimath.geometry.Pose2d:
+        return self.estimator.getEstimatedPosition()
+    
+    def getPosition(self) -> wpimath.geometry.Translation2d:
+        return self.getPose().translation()
+    
+    def getRotation(self) -> wpimath.geometry.Rotation2d:
+        return self.getPose().rotation()
+
+    def travelTo(self, pose: wpimath.geometry.Pose2d, timeout: float = 20) -> None:
+        start = wpilib.Timer.getFPGATimestamp()
+
+        while True:
+            current = self.getPose()
+            positionError = pose.translation().distance(current.translation())
+            rotationError = pose.rotation().degrees() - current.rotation().degrees()
+
+            # Normalize rotation error to the range [-180, 180]
+            rotationError = (rotationError + 180) % 360 - 180
+
+            # Check if the target pose has been reached or if timeout has occurred
+            if positionError < 0.1 and abs(rotationError) < 2 or (wpilib.Timer.getFPGATimestamp() - start) > timeout:
+                break
+
+            # Calculate speeds (proportional control)
+            xSpeed = (pose.X() - current.X()) * 0.5  # Proportional gain for X
+            ySpeed = (pose.Y() - current.Y()) * 0.5  # Proportional gain for Y
+            rotSpeed = rotationError * 0.01  # Proportional gain for rotation
+
+            # Clamp speeds to maximum allowed values
+            xSpeed = max(min(xSpeed, variables.kMaxSpeed), -variables.kMaxSpeed)
+            ySpeed = max(min(ySpeed, variables.kMaxSpeed), -variables.kMaxSpeed)
+            rotSpeed = max(min(rotSpeed, variables.kMaxAngularSpeed), -variables.kMaxAngularSpeed)
+
+            self.drive(xSpeed, ySpeed, rotSpeed, True, 0.02)
+
+        self.stop()  # Stop robot
+
+    def followPath(self, path: wpimath.geometry.Pose2d, timeout: float = 20) -> None:
+        for point in path:
+            self.travelToPoint(point, timeout)
