@@ -235,8 +235,9 @@ class Drivetrain:
 
             self.drive(xSpeed, ySpeed, rotSpeed, True, 0.02)
 
-        self.stop()  # Stop robot
+        self.stop() # Stop robot
 
     def followPath(self, path: wpimath.geometry.Pose2d, timeout: float = 20) -> None:
         for point in path:
             self.travelToPoint(point, timeout)
+        self.stop() # Stop robot
