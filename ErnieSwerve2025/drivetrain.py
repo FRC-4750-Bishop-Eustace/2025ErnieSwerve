@@ -20,8 +20,7 @@ import swervemodule
 import variables
 from pathplannerlib.auto import AutoBuilder
 from pathplannerlib.config import HolonomicPathFollowerConfig, ReplanningConfig, PIDConstants
-import limelight
-import limelight.limelight as lh
+import limelight.limelight as llutil
 from navx import AHRS
 from wpimath.estimator import SwerveDrive6PoseEstimator
 import pathplannerlib.pathfinders as pathfinder
@@ -179,9 +178,9 @@ class Drivetrain:
         self.estimator.update(self.gyro.getRotation2d(), [self.frontLeft.getPosition(), self.frontRight.getPosition(), self.backLeft.getPosition(), self.backRight.getPosition])
 
         # Find discoverable Limelight cameras
-        if useAprilTags and limelight.discover_limelights(debug=True):
-            lh.setRobotOrientation("limelight", self.getRotation().degrees(), 0, 0, 0, 0, 0)
-            mt2 = lh.getRobotPoseEstimateBlueMT2("limelight")
+        if useAprilTags and llutil.searchForLimelights(debug=True):
+            llutil.setRobotOrientation("limelight", self.getRotation().degrees(), 0, 0, 0, 0, 0)
+            mt2 = llutil.getRobotPoseEstimateBlueMT2("limelight")
 
             if not math.abs(self.gyro.getRate()) > 720 or not mt2.tagCount == 0:
                 self.estimator.setVisionMeasurementStdDevs([0.7, 0.7, 9999999])
