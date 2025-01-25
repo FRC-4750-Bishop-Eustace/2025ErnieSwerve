@@ -140,10 +140,9 @@ class SwerveModule:
         :returns: The current state of the module.
         """
         #print("Get State:", self.turningEncoder.getDeviceNumber, self.turningEncoder.get_position())
-        #wpimath.units.rotationsToRadians(self.turningEncoder.get_position())
         return wpimath.kinematics.SwerveModuleState(
             self.driveEncoder.getVelocity(),
-            wpimath.geometry.Rotation2d(),
+            wpimath.geometry.Rotation2d(wpimath.units.rotationsToRadians(self.turningEncoder.get_position().value)),
         )
 
 
@@ -156,7 +155,7 @@ class SwerveModule:
         return wpimath.kinematics.SwerveModulePosition(
             #self.driveEncoder.getVelocity(),
             self.driveEncoder.getPosition(),
-            wpimath.geometry.Rotation2d(),
+            wpimath.geometry.Rotation2d(wpimath.units.rotationsToRadians(self.turningEncoder.get_position().value)),
         )
 
     def setDesiredState(
