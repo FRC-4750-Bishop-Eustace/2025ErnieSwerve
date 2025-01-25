@@ -143,7 +143,7 @@ class SwerveModule:
         #wpimath.units.rotationsToRadians(self.turningEncoder.get_position())
         return wpimath.kinematics.SwerveModuleState(
             self.driveEncoder.getVelocity(),
-            wpimath.geometry.Rotation2d(),
+            wpimath.geometry.Rotation2d(self.turningEncoder.get_position().value),
         )
 
 
@@ -156,7 +156,7 @@ class SwerveModule:
         return wpimath.kinematics.SwerveModulePosition(
             #self.driveEncoder.getVelocity(),
             self.driveEncoder.getPosition(),
-            wpimath.geometry.Rotation2d(),
+            wpimath.geometry.Rotation2d(self.turningEncoder.get_position().value),
         )
 
     def setDesiredState(
@@ -167,7 +167,7 @@ class SwerveModule:
         :param desiredState: Desired state with speed and angle.
         """
         #NOTE: Need to determine what the right units are for the rotation to be set - most likely Radians
-        encoderRotation = wpimath.geometry.Rotation2d(self.turningEncoder.get_position())
+        encoderRotation = wpimath.geometry.Rotation2d(self.turningEncoder.get_position().value)
 
         # Optimize the reference state to avoid spinning further than 90 degrees
         state = wpimath.kinematics.SwerveModuleState.optimize(
