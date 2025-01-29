@@ -25,9 +25,10 @@ import time
 #import camera
 #import auto
 import ntcore
+from wpilib import SmartDashboard, Field2d
 from cscore import CameraServer
 from wpilib import SmartDashboard
-
+import choreo
 
 class MyRobot(wpilib.TimedRobot):
     def robotInit(self) -> None:
@@ -35,6 +36,7 @@ class MyRobot(wpilib.TimedRobot):
         self.controller = wpilib.Joystick(variables.joystickPort1)
         self.controller2 = wpilib.Joystick(variables.joystickPort2)
         self.swerve = drivetrain.Drivetrain()
+        #self.odometry = 
 
         self.elevator = elevator.Elevator(15)
         #self.limelight = limelight.PoseEstimate(pose, timestamp, latency, tagCount, tagSpan, avgTagDist, avgTagArea, fiducials)
@@ -56,116 +58,54 @@ class MyRobot(wpilib.TimedRobot):
         self.inst = ntcore.NetworkTableInstance.getDefault()
         self.lmtable = self.inst.getTable("limelight")
 
+        self.field = Field2d()
+        SmartDashboard.putData("field", self.field)
+        #SmartDashboard.putData("Swerve", self.swerve)
+        
+        # Loads from deploy/choreo/myTrajectory.traj
+        # ValueError is thrown if the file does not exist or is invalid
         '''
-        discovered_limelights = limelight.discover_limelights(debug=True)
-        print("discovered limelights:", discovered_limelights)
-        if discovered_limelights:
-            limelight_address = discovered_limelights[0] 
-            ll = limelight.Limelight(limelight_address)
-            results = ll.get_results()
-            status = ll.get_status()
-            print("-----")
-            print("targeting results:", results)
-            print("-----")
-            print("status:", status)
-            print("-----")
-            print("temp:", ll.get_temp())
-            print("-----")
-            print("name:", ll.get_name())
-            print("-----")
-            print("fps:", ll.get_fps())
-            print("-----")
-            print("hwreport:", ll.hw_report())
+        try:
+            self.trajectory = choreo.load_swerve_trajectory("myTrajectory") # 
+        except ValueError:
+        # If the trajectory is not found, ChoreoLib already prints to DriverStation
+            pass
+        '''
 
-        ll.enable_websocket()
-    
-        # print the current pipeline settings
-        print(ll.get_pipeline_atindex(0))
-
-        # update the current pipeline and flush to disk
-        pipeline_update = {
-        'area_max': 98.7,
-        'area_min': 1.98778
-        }
-        ll.update_pipeline(json.dumps(pipeline_update),flush=1)
-
-        print(ll.get_pipeline_atindex(0))
-
-        # switch to pipeline 1
-        ll.pipeline_switch(1)
-
-        # update custom user data
-        ll.update_python_inputs([4.2,0.1,9.87])
-    '''
+    def robotPeriodic(self):
+        self.swerve.updateOdometry()
 
     #FUTURE
     def autonomousInit(self):
-        self.autoSelected = self.chooser.getSelected()
-        print("Auto selected:" + self.autoSelected)
+        if self.trajectory:
+            # Get the initial pose of the trajectory
+            initial_pose = self.trajectory.get_initial_pose(self.is_red_alliance())
+
+            if initial_pose:
+                # Reset odometry to the start of the trajectory
+                self.drive_subsystem.reset_odometry(initial_pose)
+
+        # Reset and start the timer when the autonomous period begins
+        self.timer.restart()
+
+        #self.autoSelected = self.chooser.getSelected()
+        #print("Auto selected:" + self.autoSelected)
 
     def autonomousPeriodic(self) -> None:
-        self.timer.start()
-        match self.autoSelected:
-            case self.customAuto:
-                # custom auto code
-                #self.timer.start()
-                if 0.5 < self.timer.get() < 1.5:
-                    self.stopAuto()
-                if 1.5 < self.timer.get() < 2.5:
-                    self.shooter.vacummotor()
-                if 2.5 < self.timer.get() < 4.0:
-                    self.shooter.stopIntakemotor()
-                    self.slowAutoDrive()
-                if self.timer.get() > 4.0:
-                    self.shooter.stopShootermotor()
-                    self.stopAuto()
-                else:
-                    self.shooter.speakershootmotor()
-                    self.slowAutoDrive()
-                '''
-                if 1.5 < self.timer.get() < 3.0:
-                    self.stopAuto()
-                    self.shooter.speakershootmotor()
-                if 3.0 < self.timer.get() < 4.0:
-                    self.shooter.vacummotor()
-                if 4.0 < self.timer.get() < 5.0:
-                    self.shooter.stopIntakemotor()
-                    self.shooter.stopShootermotor()
-                    self.getAuto()
-                if self.timer.get() > 6.0:
-                    self.stopAuto()
-                else:
-                    self.slowAutoDrive()
-                '''
-            case _:
-                # default auto code
-                self.timer.start()
-                if 2.0 < self.timer.get():
-                    self.stopAuto()
-                else:
-                    self.slowAutoDrive()
+        if self.trajectory:
+            # Sample the trajectory at the current time into the autonomous period
+            sample = self.trajectory.sample_at(self.timer.get(), self.is_red_alliance())
 
-        '''
-        self.timer.start()
-        #self.driveWithJoystick(False)
-        self.swerve.updateOdometry()
-        #self.swerve.autoTest()
-        if 2.0 < self.timer.get():
-            self.stopAuto()
-        else:
-            self.getAuto()
-        
-        if 1.5 > self.timer.get() > 1.0:
-            self.stopAuto()
-        if 2.0 > self.timer.get() > 1.5:
-            self.strafeLeft()
-        if 2.0 < self.timer.get():
-            self.stopAuto()
-        else:
-            self.getAuto()
-        '''
+            if sample:
+                self.drive_subsystem.follow_trajectory(sample)
+    
+    def is_red_alliance(self):
+        return wpilib.DriverStation.getAlliance() == wpilib.DriverStation.Alliance.kRed
 
     def teleopPeriodic(self) -> None:
+
+        #self.swerve.updateOdometry()
+        self.field.setRobotPose(self.swerve.odometry.getPose())
 
         self.tx = self.lmtable.getNumber('tx', None)
         self.ty = self.lmtable.getNumber('ty', None)
@@ -173,9 +113,10 @@ class MyRobot(wpilib.TimedRobot):
         self.ts = self.lmtable.getNumber('ts', None)
         self.tid = self.lmtable.getNumber('tid', None)
         self.hw = self.lmtable.getNumber('hw', None)
+
         self.botpose = self.lmtable.getEntry('botpose').getDoubleArray([])
 
-        print('pose =', self.botpose)
+        #print('pose =', self.botpose)
         #print("hw", self.hw)
 
         '''
@@ -201,21 +142,22 @@ class MyRobot(wpilib.TimedRobot):
     
         self.navxGyro.getGyro()
         
-        if self.controller.getRawButton(variables.squareButton) == 1:
-            self.swerve.alignment()
-        
         if self.controller.getRawButton(variables.triangleButton) == 1:
             self.elevator.start_elevatorMotor()
         else:
             self.elevator.stop_elevatorMotor()
 
+        if self.controller.getRawButton(variables.circleButton) == 1:
+            self.elevator.get_elevatorEncoder()
+        if self.controller.getRawButton(variables.squareButton) == 1:
+            self.elevator.set_elevatorEncoder(0)
 
     def driveWithJoystick(self, fieldRelative: bool) -> None:
         # Get the x speed. We are inverting this because Xbox controllers return
         # negative values when we push forward.
         # NOTE: Check if we need inversion here
-        if fieldRelative:
-            self.swerve.updateOdometry()
+        #if fieldRelative:
+        #    self.swerve.updateOdometry()
 
         xSpeed = (
             self.xspeedLimiter.calculate(
