@@ -11,9 +11,9 @@ import wpimath.geometry
 import wpimath.kinematics
 import swervemodule
 import variables
-import pathplannerlib.auto
-from pathplannerlib.auto import AutoBuilder
-from pathplannerlib.config import HolonomicPathFollowerConfig, ReplanningConfig, PIDConstants
+from wpilib import SmartDashboard
+import ntcore
+from wpimath.kinematics import SwerveModuleState
 
 '''
 kMaxSpeed = 1.5  # meters per second
@@ -44,6 +44,9 @@ class Drivetrain:
         self.backRightLocation = wpimath.geometry.Translation2d(-0.32, -0.32)
         self.backLeftLocation = wpimath.geometry.Translation2d(-0.32, 0.32)
         '''
+
+        #self.field = Field2d()
+
         self.frontLeftLocation = wpimath.geometry.Translation2d(-variables.chassisHalfLength, variables.chassisHalfLength)
         self.frontRightLocation = wpimath.geometry.Translation2d(-variables.chassisHalfLength, -variables.chassisHalfLength)
         self.backRightLocation = wpimath.geometry.Translation2d(variables.chassisHalfLength, -variables.chassisHalfLength)
@@ -54,7 +57,14 @@ class Drivetrain:
         self.backRight = swervemodule.SwerveModule(variables.backRightDriveController, variables.backRightTurnController, variables.backRightDriveEncoder, variables.backRightTurnEncoder)
         self.backLeft = swervemodule.SwerveModule(variables.backLeftDriveController, variables.backLeftTurnController, variables.backLeftDriveEncoder, variables.backLeftTurnEncoder)
 
+        SmartDashboard.putData("TurnPID", self.frontLeft.turningPIDController)
+        #SmartDashboard.putData("TurnFF", self.frontLeft.turnFeedforward)
 
+        nt = ntcore.NetworkTableInstance.getDefault()
+        topic = nt.getStructArrayTopic("/SwerveStates", SwerveModuleState)
+        commandState = nt.getStructArrayTopic("/CommandStates", SwerveModuleState)
+        self.pub = topic.publish()
+        self.cmd = commandState.publish()
         '''
         BERT NOTES:
         
@@ -92,8 +102,11 @@ class Drivetrain:
         #self.gyro = wpilib.AnalogGyro(0)
         self.angler = navx.AHRS.create_spi()
         #print("gyroscope = ", self.angler)
-        self.gyroinit = 0 #self.angler.getAngle()
+        self.gyroinit = self.angler.getAngle()
         self.gyroradiansinit = wpimath.units.degreesToRadians(self.gyroinit)
+        #self.resetPose = self.odometry.resetPose(self.odometry.getPose())
+        #self.getRobotRelativeSpeeds = wpilib.kinematics.ChassisSpeeds.fromRobotRelativeSpeeds(self.xSpeed, self.ySpeed, self.#rot, wpimath.geometry.Rotation2d(self.gyroradians))
+        #print(self.getRobotRelativeSpeeds)
         # print("gyro", self.gyro)
 
         #NOTE: Just defining the fixed kinematics of the bot
@@ -122,7 +135,9 @@ class Drivetrain:
         )
 
         self.angler.reset()
-    
+
+        #self.heading_controller.enableContinuousInput(-math.pi, math.pi)
+
     def drive(
         self,
         xSpeed: float,
@@ -140,8 +155,13 @@ class Drivetrain:
         :param periodSeconds: Time
         """
 
+        #NOTE
+        self.xSpeed = xSpeed
+        self.ySpeed = ySpeed
+        self.rot = rot
+
         #if fieldRelative:
-        #    self.updateOdometry()
+        self.updateOdometry()
 
         self.gyro = self.angler.getAngle()
         self.gyroradians = wpimath.units.degreesToRadians(self.gyro)
@@ -169,13 +189,25 @@ class Drivetrain:
         self.backRight.setDesiredState(swerveModuleStates[2])
         self.backLeft.setDesiredState(swerveModuleStates[3])
 
-        print(swerveModuleStates[0])
+        self.pub.set([self.frontLeft.getState(),self.frontRight.getState(),self.backRight.getState(),self.backLeft.getState()])
 
-    # CURRENLY NOT BEING USED
+        self.cmd.set([
+            swerveModuleStates[0],
+            swerveModuleStates[1],
+            swerveModuleStates[2],
+            swerveModuleStates[3]
+        ])
+
+        # SmartDashboard.putData("frontLeft", self.frontLeft)
+        # SmartDashboard.putData("bLeft", self.backLeft.getState())
+        # SmartDashboard.putData("fRight", self.frontRight.getState())
+        # SmartDashboard.putData("bRight", self.backRight.getState())
+    
     def updateOdometry(self) -> None:
         """Updates the field relative position of the robot."""
         self.odometry.update(
-            wpimath.geometry.Rotation2d(self.gyroradiansinit),
+            #wpimath.geometry.Rotation2d(self.gyroradiansinit),
+            self.angler.getRotation2d(),
             (
                 self.frontLeft.getPosition(),
                 self.frontRight.getPosition(),
@@ -184,6 +216,23 @@ class Drivetrain:
             ),
         )
     
+    #NOTE
+    def follow_trajectory(self, sample):
+        # Get the current pose of the robot
+        #pose = self.get_pose()
+        self.pose = Field2d()
+
+        # Generate the next speeds for the robot
+        speeds = ChassisSpeeds(
+            sample.vx + swervemodule.drivePIDController.calculate(pose.X(), sample.x),
+            sample.vy + swervemodule.drivePIDController.calculate(pose.Y(), sample.y),
+            sample.omega + swervemodule.turningPIDController.calculate(pose.rotation().radians(), sample.heading)
+        )
+
+        # Apply the generated speeds
+        self.drive_field_relative(speeds)
+
+
     def alignment(self) -> None:
         self.frontLeft.setDesiredState(wpimath.kinematics.SwerveModuleState(0, wpimath.geometry.Rotation2d(0)))
         self.frontRight.setDesiredState(wpimath.kinematics.SwerveModuleState(0, wpimath.geometry.Rotation2d(0)))
