@@ -64,13 +64,13 @@ class MyRobot(wpilib.TimedRobot):
         
         # Loads from deploy/choreo/myTrajectory.traj
         # ValueError is thrown if the file does not exist or is invalid
-        '''
+        
         try:
-            self.trajectory = choreo.load_swerve_trajectory("myTrajectory") # 
+            self.trajectory = choreo.load_swerve_trajectory("myTraj_2") # 
         except ValueError:
         # If the trajectory is not found, ChoreoLib already prints to DriverStation
             pass
-        '''
+        
 
     def robotPeriodic(self):
         self.swerve.updateOdometry()
@@ -83,7 +83,7 @@ class MyRobot(wpilib.TimedRobot):
 
             if initial_pose:
                 # Reset odometry to the start of the trajectory
-                self.drive_subsystem.reset_odometry(initial_pose)
+                self.swerve.updateOdometry()
 
         # Reset and start the timer when the autonomous period begins
         self.timer.restart()
@@ -97,7 +97,7 @@ class MyRobot(wpilib.TimedRobot):
             sample = self.trajectory.sample_at(self.timer.get(), self.is_red_alliance())
 
             if sample:
-                self.drive_subsystem.follow_trajectory(sample)
+                self.swerve.follow_trajectory(sample)
     
     def is_red_alliance(self):
         return wpilib.DriverStation.getAlliance() == wpilib.DriverStation.Alliance.kRed
