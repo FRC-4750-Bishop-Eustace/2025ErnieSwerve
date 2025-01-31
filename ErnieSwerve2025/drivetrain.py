@@ -14,6 +14,8 @@ import variables
 from wpilib import SmartDashboard
 import ntcore
 from wpimath.kinematics import SwerveModuleState
+from wpilib import Field2d
+import time
 
 '''
 kMaxSpeed = 1.5  # meters per second
@@ -65,6 +67,7 @@ class Drivetrain:
         commandState = nt.getStructArrayTopic("/CommandStates", SwerveModuleState)
         self.pub = topic.publish()
         self.cmd = commandState.publish()
+        
         '''
         BERT NOTES:
         
@@ -108,6 +111,24 @@ class Drivetrain:
         #self.getRobotRelativeSpeeds = wpilib.kinematics.ChassisSpeeds.fromRobotRelativeSpeeds(self.xSpeed, self.ySpeed, self.#rot, wpimath.geometry.Rotation2d(self.gyroradians))
         #print(self.getRobotRelativeSpeeds)
         # print("gyro", self.gyro)
+        #self.swervemodule = swervemodule.SwerveModule()
+
+        self.x_controller = wpimath.controller.PIDController(variables.drivePID_P, variables.drivePID_I, variables.drivePID_D)
+        self.y_controller = wpimath.controller.PIDController(variables.drivePID_P, variables.drivePID_I, variables.drivePID_D)
+        self.heading_controller = wpimath.controller.ProfiledPIDController(
+            variables.turnPID_P,
+            variables.turnPID_I,
+            variables.turnPID_D,
+            wpimath.trajectory.TrapezoidProfile.Constraints(
+                1000,
+                1000, #How is the contraint applied
+            ),
+        )
+
+        self.x_controller2 = wpimath.controller.PIDController(10.0, 0, 0)
+        self.y_controller2 = wpimath.controller.PIDController(10.0, 0, 0)
+        self.heading_controller2 = wpimath.controller.PIDController(7.5, 0, 0)
+
 
         #NOTE: Just defining the fixed kinematics of the bot
         self.kinematics = wpimath.kinematics.SwerveDrive4Kinematics(
@@ -136,6 +157,10 @@ class Drivetrain:
 
         self.angler.reset()
 
+        self.timer = wpilib.Timer()
+        self.timer.reset( )
+        self.timer.start()
+        self.period = self.timer.get()
         #self.heading_controller.enableContinuousInput(-math.pi, math.pi)
 
     def drive(
@@ -219,18 +244,22 @@ class Drivetrain:
     #NOTE
     def follow_trajectory(self, sample):
         # Get the current pose of the robot
-        #pose = self.get_pose()
-        self.pose = Field2d()
+        self.pose = self.odometry.getPose() #NOTE: get robot to stop after reaching point
 
         # Generate the next speeds for the robot
-        speeds = ChassisSpeeds(
-            sample.vx + swervemodule.drivePIDController.calculate(pose.X(), sample.x),
-            sample.vy + swervemodule.drivePIDController.calculate(pose.Y(), sample.y),
-            sample.omega + swervemodule.turningPIDController.calculate(pose.rotation().radians(), sample.heading)
+        speeds = wpimath.kinematics.ChassisSpeeds(
+            sample.vx + self.x_controller.calculate(self.pose.X(), sample.x),
+            sample.vy + self.y_controller.calculate(self.pose.Y(), sample.y),
+            sample.omega + self.heading_controller.calculate(self.pose.rotation().radians(), sample.heading)
         )
 
         # Apply the generated speeds
-        self.drive_field_relative(speeds)
+        self.drive(speeds[0], speeds[1], 0, True, self.period)
+        print("pose =", self.pose)
+        print("0 =", speeds[0])
+        print("1 =", speeds[1])
+        print("2 =", speeds[2])
+
 
 
     def alignment(self) -> None:
