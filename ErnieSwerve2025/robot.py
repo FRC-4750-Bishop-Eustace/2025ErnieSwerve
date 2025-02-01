@@ -38,7 +38,7 @@ class MyRobot(wpilib.TimedRobot):
         self.swerve = drivetrain.Drivetrain()
         #self.odometry = 
 
-        self.elevator = elevator.Elevator(15)
+        self.elevator = elevator.Elevator(15, 16, [100, 200, 300, 400])
         #self.limelight = limelight.PoseEstimate(pose, timestamp, latency, tagCount, tagSpan, avgTagDist, avgTagArea, fiducials)
 
         # navxGyro is a file to test the navx Gyro. This can be ignored/commented out.
