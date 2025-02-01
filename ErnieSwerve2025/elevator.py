@@ -2,8 +2,15 @@
 import math
 import wpilib
 from rev import SparkFlex, SparkFlexConfig, SparkBase
-# import wpimath.controller
+from wpimath.controller import ProfiledPIDController, ElevatorFeedforward
+import wpimath.kinematics
+import variables
+import wpimath
 
+
+kMaxVelocity = 50 # TBD - Currently an arbitrary value
+kMaxAcceleration = 125 # TBD - Currently an arbitrary value
+kMaxSpeed = kMaxVelocity + kMaxAcceleration * 0.02
 
 class Elevator:
     def __init__(
@@ -23,12 +30,42 @@ class Elevator:
         self.elevatorConfig2 = SparkFlexConfig()
         self.elevatorMotor2.configure(self.elevatorConfig2, SparkBase.ResetMode.kNoResetSafeParameters, SparkBase.PersistMode.kPersistParameters)
 
+        
+
         self.heights = heights
 
+        self.elevatorPIDController = ProfiledPIDController(
+            variables.elevatorPID_P,
+            variables.elevatorPID_I,
+            variables.elevatorPID_D,
+            wpimath.trajectory.TrapezoidProfile.Constraints(
+                kMaxVelocity,
+                kMaxAcceleration
+            )
+        )
+
+        self.elevatorFeedforward = ElevatorFeedforward(
+            variables.elevatorFF_1,
+            variables.elevatorFF_2,
+            variables.elevatorFF_3,
+            variables.elevatorFF_4
+        )
+
     def start_elevatorMotor(self, speed: int):
-        #print('motor moving')
-        self.elevatorMotor1.setVoltage(speed)
-        self.elevatorMotor1.setVoltage(-speed)
+        speed = math.max(1, math.min(speed, -1)) # Clamp speed to [-1 1]
+        
+        encoderRotation = wpimath.geometry.Rotation2d.fromRotations((self.elevatorEncoder1.getPosition() + self.elevatorEncoder2.getPosition()) / 2)
+
+        output = self.elevatorPIDController.calculate(
+            encoderRotation, encoderRotation + speed * kMaxSpeed
+        )
+
+        feedforward = self.elevatorFeedforward.calculate(
+            self.turningPIDController.getSetpoint().velocity
+        )
+        
+        self.elevatorMotor1.setVoltage((output + feedforward) * speed)
+        self.elevatorMotor2.setVoltage(-(output + feedforward) * speed)
 
     def stop_elevatorMotor(self):
         #print('motor stopped')

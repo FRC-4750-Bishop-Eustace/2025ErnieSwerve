@@ -19,13 +19,20 @@ zeroThreshold = wpimath.geometry.Rotation2d(0.3)
 drivePID_P = 0.02
 drivePID_I = 0
 drivePID_D = 0
+driveFF_1 = 1.8
+driveFF_2 = 3
 turnPID_P = 7.8 #12 # 3
 turnPID_I = 0
 turnPID_D = 0.055 #0.1 #0.4750
-driveFF_1 = 1.8
-driveFF_2 = 3
 turnFF_1 = 0 #0.05
-turnFF_2 = 0 #0.45 
+turnFF_2 = 0 #0.45
+elevatorPID_P = 0 # TBD
+elevatorPID_I = 0 # TBD
+elevatorPID_D = 0 # TBD
+elevatorFF_1 = 0 # TBD
+elevatorFF_2 = 0 # TBD
+elevatorFF_3 = 0 # TBD
+elevatorFF_4 = 0 # TBD
 
 TurnState = 0
 
