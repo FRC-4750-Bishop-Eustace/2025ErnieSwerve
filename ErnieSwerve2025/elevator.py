@@ -1,8 +1,8 @@
 # Write your code here :-)
 import math
 import wpilib
-from rev import SparkFlex
-
+from rev import SparkFlex, SparkFlexConfig, SparkBase
+# import wpimath.controller
 
 
 class Elevator:
@@ -15,8 +15,14 @@ class Elevator:
 
         self.elevatorMotor1 = SparkFlex(elevatorMotor1ID, SparkFlex.MotorType.kBrushless)
         self.elevatorEncoder1 = self.elevatorMotor1.getEncoder()
+        self.elevatorConfig1 = SparkFlexConfig()
+        self.elevatorMotor1.configure(self.elevatorConfig1, SparkBase.ResetMode.kNoResetSafeParameters, SparkBase.PersistMode.kPersistParameters)
+        
         self.elevatorMotor2 = SparkFlex(elevatorMotor2ID, SparkFlex.MotorType.kBrushless)
         self.elevatorEncoder2 = self.elevatorMotor2.getEncoder()
+        self.elevatorConfig2 = SparkFlexConfig()
+        self.elevatorMotor2.configure(self.elevatorConfig2, SparkBase.ResetMode.kNoResetSafeParameters, SparkBase.PersistMode.kPersistParameters)
+
         self.heights = heights
 
     def start_elevatorMotor(self, speed: int):
@@ -46,22 +52,22 @@ class Elevator:
                     self.start_elevatorMotor(-1)
                     self.set_elevatorEncoder(0)
             case 1:
-                if self.elevatorEncoder.getPosition() > self.heights[0]: # TBD
+                if self.elevatorEncoder.getPosition() > self.heights[0]:
                     self.start_elevatorMotor(-1)
-                elif self.elevatorEncoder.getPosition() < self.heights[0]: # TBD
+                elif self.elevatorEncoder.getPosition() < self.heights[0]:
                     self.start_elevatorMotor(1)
             case 2:
-                if self.elevatorEncoder.getPosition() > self.heights[1]: # TBD
+                if self.elevatorEncoder.getPosition() > self.heights[1]:
                     self.start_elevatorMotor(-1)
-                elif self.elevatorEncoder.getPosition() < self.heights[1]: # TBD
+                elif self.elevatorEncoder.getPosition() < self.heights[1]:
                     self.start_elevatorMotor(1)
             case 3:
-                if self.elevatorEncoder.getPosition() > self.heights[2]: # TBD
+                if self.elevatorEncoder.getPosition() > self.heights[2]:
                     self.start_elevatorMotor(-1)
-                elif self.elevatorEncoder.getPosition() < self.heights[2]: # TBD
+                elif self.elevatorEncoder.getPosition() < self.heights[2]:
                     self.start_elevatorMotor(1)
             case 4:
-                if self.elevatorEncoder.getPosition() > self.heights[3]: # TBD
+                if self.elevatorEncoder.getPosition() > self.heights[3]:
                     self.start_elevatorMotor(-1)
-                elif self.elevatorEncoder.getPosition() < self.heights[3]: # TBD
+                elif self.elevatorEncoder.getPosition() < self.heights[3]:
                     self.start_elevatorMotor(1)
