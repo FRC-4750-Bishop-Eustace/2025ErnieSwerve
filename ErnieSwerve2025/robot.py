@@ -54,9 +54,6 @@ class MyRobot(wpilib.TimedRobot):
         self.timer = wpilib.Timer()
         self.fieldDrive = 1
         #CameraServer.startAutomaticCapture()
-        
-        self.inst = ntcore.NetworkTableInstance.getDefault()
-        self.lmtable = self.inst.getTable("limelight")
 
         self.field = Field2d()
         SmartDashboard.putData("field", self.field)
@@ -73,7 +70,7 @@ class MyRobot(wpilib.TimedRobot):
         '''
 
     def robotPeriodic(self):
-        self.swerve.updateOdometry()
+        self.swerve.updateOdometry(True)
 
     #FUTURE
     def autonomousInit(self):
@@ -104,17 +101,8 @@ class MyRobot(wpilib.TimedRobot):
 
     def teleopPeriodic(self) -> None:
 
-        #self.swerve.updateOdometry()
-        self.field.setRobotPose(self.swerve.odometry.getPose())
-
-        self.tx = self.lmtable.getNumber('tx', None)
-        self.ty = self.lmtable.getNumber('ty', None)
-        self.ta = self.lmtable.getNumber('ta', None)
-        self.ts = self.lmtable.getNumber('ts', None)
-        self.tid = self.lmtable.getNumber('tid', None)
-        self.hw = self.lmtable.getNumber('hw', None)
-
-        self.botpose = self.lmtable.getEntry('botpose').getDoubleArray([])
+        #self.swerve.updateOdometry(True)
+        self.field.setRobotPose(self.swerve.getPose())
 
         #print('pose =', self.botpose)
         #print("hw", self.hw)
@@ -157,7 +145,7 @@ class MyRobot(wpilib.TimedRobot):
         # negative values when we push forward.
         # NOTE: Check if we need inversion here
         #if fieldRelative:
-        #    self.swerve.updateOdometry()
+        #    self.swerve.updateOdometry(True)
 
         xSpeed = (
             self.xspeedLimiter.calculate(
