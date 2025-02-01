@@ -19,13 +19,13 @@ zeroThreshold = wpimath.geometry.Rotation2d(0.3)
 drivePID_P = 0.02
 drivePID_I = 0
 drivePID_D = 0
-turnPID_P = 7.8 #12 # 3
+turnPID_P = 2 # 0.06
 turnPID_I = 0
-turnPID_D = 0.055 #0.1 #0.4750
+turnPID_D = 0.00053 #0.000053
 driveFF_1 = 1.8
 driveFF_2 = 3
-turnFF_1 = 0 #0.05
-turnFF_2 = 0 #0.45 
+turnFF_1 = 0.35 #0.05
+turnFF_2 = 1 #0.45 
 
 TurnState = 0
 
@@ -55,7 +55,6 @@ backLeftTurnEncoder = 11
 # CONTROLLERS/DEADBAND/SLEW
 joystickPort1 = 2
 joystickPort2 = 0
-joystickPort3 = 3
 
 x_slewrate = 3
 y_slewrate = 3

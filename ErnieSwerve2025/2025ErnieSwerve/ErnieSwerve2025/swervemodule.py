@@ -10,24 +10,21 @@ import wpimath.kinematics
 import wpimath.geometry
 import wpimath.controller
 import wpimath.trajectory
-from phoenix6 import hardware
-#from phoenix6.hardware import CANCoder
-import phoenix6.hardware
-from rev import SparkMax, SparkMaxConfig, SparkBase
+from phoenix5.sensors import CANCoder
+import phoenix5.sensors 
+from rev import CANSparkMax
 import wpimath.units
 import drivetrain
 import variables
 from wpilib import DriverStation
-from wpilib import SmartDashboard
-
 
 
 kWheelRadius = 0.0508 # In meters
-kDriveReduction = 425 / 63
 kEncoderResolution = 4096
 kVEncoderResolution = 42 #Need to confirm
-kModuleMaxAngularVelocity = 1000#math.pi * 10  #need to understand how this applies to the motor
-kModuleMaxAngularAcceleration = 1000#math.tau * 10 #need to understand how this applies to the motor
+kModuleMaxAngularVelocity = math.pi #need to understand how this applies to the motor
+kModuleMaxAngularAcceleration = math.tau #need to understand how this applies to the motor
+
 
 
 class SwerveModule:
@@ -73,18 +70,14 @@ class SwerveModule:
 
         # NOTE: need to confirm output from SparkMaxAbsoluteEncoder - may shift to Relative Encoder
         ## No longer required 
-        self.driveMotor = SparkMax(driveMotorID, SparkMax.MotorType.kBrushless)
-        self.turningMotor = SparkMax(turningMotorID, SparkMax.MotorType.kBrushless)
+        self.driveMotor = CANSparkMax(driveMotorID, CANSparkMax.MotorType.kBrushless)
+        self.turningMotor = CANSparkMax(turningMotorID, CANSparkMax.MotorType.kBrushless)
         self.driveEncoder = self.driveMotor.getEncoder()
-        self.turningEncoder = hardware.CANcoder(turningEncoderID, "rio")
-        self.driveConfig = SparkMaxConfig()
-        self.driveConfig.encoder.velocityConversionFactor(math.tau * kWheelRadius / kVEncoderResolution).positionConversionFactor((kWheelRadius * (4 * math.pi)) / kDriveReduction)
-        self.driveConfig.encoder.positionConversionFactor((kWheelRadius * (4 * math.pi)) / kDriveReduction)
-        self.driveMotor.configure(self.driveConfig, SparkBase.ResetMode.kNoResetSafeParameters, SparkBase.PersistMode.kPersistParameters)
-        #print(turningEncoderID, self.turningEncoder.getAbsolutePosition())
-        #self.turningEncoder.configFeedbackCoefficient((2 * math.pi / 4096), "rad", hardware.SensorTimeBase(1))
-        #self.turningEncoder.configAbsoluteSensorRange(phoenix5.sensors.AbsoluteSensorRange(1))
-        #self.turningEncoder.configSensorDirection(1)
+        self.turningEncoder = CANCoder(turningEncoderID, "rio")
+        print(turningEncoderID, self.turningEncoder.getAbsolutePosition())
+        self.turningEncoder.configFeedbackCoefficient((2 * math.pi / 4096), "rad", phoenix5.sensors.SensorTimeBase(1))
+        self.turningEncoder.configAbsoluteSensorRange(phoenix5.sensors.AbsoluteSensorRange(1))
+        self.turningEncoder.configSensorDirection(1)
 
         #print("setting:", turningEncoderID, self.turningEncoder.getAbsolutePosition())
         # NOTE: can we use the wpilib.encoder library for these encoders - may need to review
@@ -104,9 +97,6 @@ class SwerveModule:
             ),
         )
 
-
-        #self.turningPIDController.reset(wpimath.kinematics.SwerveModuleState(self.driveEncoder.getVelocity(),wpimath.geometry.Rotation2d.fromRotations(self.turningEncoder.get_position().value)))
-
         # Gains are for example purposes only - must be determined for your own robot!
         # NOTE: To review
         self.driveFeedforward = wpimath.controller.SimpleMotorFeedforwardMeters(variables.driveFF_1, variables.driveFF_2)
@@ -117,14 +107,9 @@ class SwerveModule:
         # resolution.
 
         # NOTE: Need to determine if this is the right distance per pulse value (from user guide it shows 42 counts per revolution)
-        #self.driveEncoder.setVelocityConversionFactor(
-        #    math.tau * kWheelRadius / kVEncoderResolution
-        #    #(kWheelRadius * (4 * math.pi)) / kDriveReduction
-        #)
-
-        # self.driveEncoder.setPositionConversionFactor(
-        #     (kWheelRadius * (4 * math.pi)) / kDriveReduction
-        # )
+        self.driveEncoder.setVelocityConversionFactor(
+            math.tau * kWheelRadius / kVEncoderResolution
+        )
 
         # Set the distance (in this case, angle) in radians per pulse for the turning encoder.
         # This is the the angle through an entire rotation (2 * pi) divided by the
@@ -136,7 +121,6 @@ class SwerveModule:
         # Limit the PID Controller's input range between -pi and pi and set the input
         # to be continuous.
         self.turningPIDController.enableContinuousInput(-math.pi, math.pi)
-        #print("turn encoder", self.turningEncoder.get_position().value)
 
     
     
@@ -145,11 +129,10 @@ class SwerveModule:
 
         :returns: The current state of the module.
         """
-        #print("Get State:", self.turningEncoder.getDeviceNumber, self.turningEncoder.get_position())
-        #wpimath.units.rotationsToRadians(self.turningEncoder.get_position().value)
+        #print("Get State:", self.turningEncoder.getDeviceNumber, self.turningEncoder.getPosition())
         return wpimath.kinematics.SwerveModuleState(
             self.driveEncoder.getVelocity(),
-            wpimath.geometry.Rotation2d.fromRotations(self.turningEncoder.get_position().value),
+            wpimath.geometry.Rotation2d(self.turningEncoder.getPosition()),
         )
 
 
@@ -158,11 +141,10 @@ class SwerveModule:
 
         :returns: The current position of the module.
         """
-        #print("Get Position:", self.turningEncoder.getDeviceNumber, self.turningEncoder.get_position())
+        #print("Get Position:", self.turningEncoder.getDeviceNumber, self.turningEncoder.getPosition())
         return wpimath.kinematics.SwerveModulePosition(
-            #self.driveEncoder.getVelocity(),
-            self.driveEncoder.getPosition(),
-            wpimath.geometry.Rotation2d.fromRotations(self.turningEncoder.get_position().value),
+            self.driveEncoder.getVelocity(),
+            wpimath.geometry.Rotation2d(self.turningEncoder.getPosition()),
         )
 
     def setDesiredState(
@@ -173,31 +155,28 @@ class SwerveModule:
         :param desiredState: Desired state with speed and angle.
         """
         #NOTE: Need to determine what the right units are for the rotation to be set - most likely Radians
-        encoderRotation = wpimath.geometry.Rotation2d.fromRotations(self.turningEncoder.get_position().value)
-
-        desiredState.optimize(encoderRotation)
-        desiredState.cosineScale(encoderRotation)
+        encoderRotation = wpimath.geometry.Rotation2d(self.turningEncoder.getPosition())
 
         # Optimize the reference state to avoid spinning further than 90 degrees
-        #state = wpimath.kinematics.SwerveModuleState.optimize(
-        #    desiredState, encoderRotation
-        #)
+        state = wpimath.kinematics.SwerveModuleState.optimize(
+            desiredState, encoderRotation
+        )
 
         # Scale speed by cosine of angle error. This scales down movement perpendicular to the desired
         # direction of travel that can occur when modules change directions. This results in smoother
         # driving.
-        #state.speed *= (state.angle - encoderRotation).cos()
+        state.speed *= (state.angle - encoderRotation).cos()
 
         # Calculate the drive output from the drive PID controller.
         driveOutput = self.drivePIDController.calculate(
-            self.driveEncoder.getVelocity(), desiredState.speed
+            self.driveEncoder.getVelocity(), state.speed
         )
 
-        driveFeedforward = self.driveFeedforward.calculate(desiredState.speed)
+        driveFeedforward = self.driveFeedforward.calculate(state.speed)
 
         # Calculate the turning motor output from the turning PID controller.
         turnOutput = self.turningPIDController.calculate(
-            wpimath.units.rotationsToRadians(self.turningEncoder.get_position().value), desiredState.angle.radians() 
+            self.turningEncoder.getPosition(), state.angle.radians() 
         )
 
         turnFeedforward = self.turnFeedforward.calculate(

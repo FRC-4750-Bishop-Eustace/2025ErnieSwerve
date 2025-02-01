@@ -13,38 +13,23 @@ import wpimath.filter
 import wpimath.controller
 import drivetrain
 import variables
-import elevator
-import navxGyro
-import ntcore
-#import limelight
-#import limelightresults
-import json
-import time
-#import limelight
+#import navxGyro
 #import vision
 #import camera
 #import auto
-import ntcore
-from wpilib import SmartDashboard, Field2d
 from cscore import CameraServer
 from wpilib import SmartDashboard
-import choreo
+
 
 class MyRobot(wpilib.TimedRobot):
     def robotInit(self) -> None:
         """Robot initialization function"""
         self.controller = wpilib.Joystick(variables.joystickPort1)
         self.controller2 = wpilib.Joystick(variables.joystickPort2)
-        self.pad = wpilib.Joystick(variables.joystickPort3)
-
         self.swerve = drivetrain.Drivetrain()
-        #self.odometry = 
-
-        self.elevator = elevator.Elevator(16, 17, [100, 200, 300, 400])
-        #self.limelight = limelight.PoseEstimate(pose, timestamp, latency, tagCount, tagSpan, avgTagDist, avgTagArea, fiducials)
 
         # navxGyro is a file to test the navx Gyro. This can be ignored/commented out.
-        self.navxGyro = navxGyro.Gyro()
+        #self.navxGyro = navxGyro.Gyro()
 
         # Slew rate limiters to make joystick inputs more gentle; 1/3 sec from 0 to 1.
         # Speed limiters
@@ -56,86 +41,76 @@ class MyRobot(wpilib.TimedRobot):
         self.timer = wpilib.Timer()
         self.fieldDrive = 1
         #CameraServer.startAutomaticCapture()
-        
-        self.inst = ntcore.NetworkTableInstance.getDefault()
-        self.lmtable = self.inst.getTable("limelight")
-
-        self.field = Field2d()
-        SmartDashboard.putData("field", self.field)
-        #SmartDashboard.putData("Swerve", self.swerve)
-        
-        # Loads from deploy/choreo/myTrajectory.traj
-        # ValueError is thrown if the file does not exist or is invalid
-        
-        try:
-            self.trajectory = choreo.load_swerve_trajectory("myTraj_11") # 
-        except ValueError:
-        # If the trajectory is not found, ChoreoLib already prints to DriverStation
-            pass
-        
-
-    def robotPeriodic(self):
-        self.swerve.updateOdometry()
+         
 
     #FUTURE
     def autonomousInit(self):
-
-        if self.trajectory:
-            # Get the initial pose of the trajectory
-            initial_pose = self.trajectory.get_initial_pose(self.is_red_alliance())
-
-            # if initial_pose:
-                # Reset odometry to the start of the trajectory
-            self.swerve.updateOdometry()
-
-        # Reset and start the timer when the autonomous period begins
-        self.timer.restart()
-
-        #self.autoSelected = self.chooser.getSelected()
-        #print("Auto selected:" + self.autoSelected)
+        self.autoSelected = self.chooser.getSelected()
+        print("Auto selected:" + self.autoSelected)
 
     def autonomousPeriodic(self) -> None:
+        self.timer.start()
+        match self.autoSelected:
+            case self.customAuto:
+                # custom auto code
+                #self.timer.start()
+                if 0.5 < self.timer.get() < 1.5:
+                    self.stopAuto()
+                if 1.5 < self.timer.get() < 2.5:
+                    self.shooter.vacummotor()
+                if 2.5 < self.timer.get() < 4.0:
+                    self.shooter.stopIntakemotor()
+                    self.slowAutoDrive()
+                if self.timer.get() > 4.0:
+                    self.shooter.stopShootermotor()
+                    self.stopAuto()
+                else:
+                    self.shooter.speakershootmotor()
+                    self.slowAutoDrive()
+                '''
+                if 1.5 < self.timer.get() < 3.0:
+                    self.stopAuto()
+                    self.shooter.speakershootmotor()
+                if 3.0 < self.timer.get() < 4.0:
+                    self.shooter.vacummotor()
+                if 4.0 < self.timer.get() < 5.0:
+                    self.shooter.stopIntakemotor()
+                    self.shooter.stopShootermotor()
+                    self.getAuto()
+                if self.timer.get() > 6.0:
+                    self.stopAuto()
+                else:
+                    self.slowAutoDrive()
+                '''
+            case _:
+                # default auto code
+                self.timer.start()
+                if 2.0 < self.timer.get():
+                    self.stopAuto()
+                else:
+                    self.slowAutoDrive()
 
-        self.field.setRobotPose(self.swerve.odometry.getPose())
-
-        if self.trajectory:
-            # Sample the trajectory at the current time into the autonomous period
-            sample = self.trajectory.sample_at(self.timer.get(), self.is_red_alliance())
-
-            if sample:
-                self.swerve.follow_trajectory(sample)
-                
-
-
-    def is_red_alliance(self):
-        return wpilib.DriverStation.getAlliance() == wpilib.DriverStation.Alliance.kRed
+        '''
+        self.timer.start()
+        #self.driveWithJoystick(False)
+        self.swerve.updateOdometry()
+        #self.swerve.autoTest()
+        if 2.0 < self.timer.get():
+            self.stopAuto()
+        else:
+            self.getAuto()
+        
+        if 1.5 > self.timer.get() > 1.0:
+            self.stopAuto()
+        if 2.0 > self.timer.get() > 1.5:
+            self.strafeLeft()
+        if 2.0 < self.timer.get():
+            self.stopAuto()
+        else:
+            self.getAuto()
+        '''
 
     def teleopPeriodic(self) -> None:
-
-        #self.swerve.updateOdometry()
-        self.field.setRobotPose(self.swerve.odometry.getPose())
-
-        self.tx = self.lmtable.getNumber('tx', None)
-        self.ty = self.lmtable.getNumber('ty', None)
-        self.ta = self.lmtable.getNumber('ta', None)
-        self.ts = self.lmtable.getNumber('ts', None)
-        self.tid = self.lmtable.getNumber('tid', None)
-        self.hw = self.lmtable.getNumber('hw', None)
-
-        self.botpose = self.lmtable.getEntry('botpose').getDoubleArray([])
-
-        #print('pose =', self.botpose)
-        #print("hw", self.hw)
-
-        '''
-        result = ll.get_latest_results()
-        parsed_result = limelightresults.parse_results(result)
-        if parsed_result is not None:
-            print("valid targets: ", parsed_result.validity, ", pipelineIndex: ", parsed_result.pipeline_id,", Targeting Latency: ", parsed_result.targeting_latency)
-            #for tag in parsed_result.fiducialResults:
-            #    print(tag.robot_pose_target_space, tag.fiducial_id)
-        time.sleep(1)  # Set this to 0 for max fps
-        '''
 
         # CHANGE TO FIELD DRIVE VS BOT RELETIVE
         if self.controller.getRawButton(variables.crossButton) == 1:
@@ -148,27 +123,22 @@ class MyRobot(wpilib.TimedRobot):
         else:
             self.driveWithJoystick(False)
     
-        self.navxGyro.getGyro()
+        #self.navxGyro.getGyro()
         
-        if self.pad.getRawButton(6) == 1:
-            self.elevator.start_elevatorMotor(5)
-        elif self.pad.getRawButton(9) == 1:
-            self.elevator.start_elevatorMotor(-5)
-        else:
-            self.elevator.stop_elevatorMotor()
+        if self.controller.getRawButton(variables.squareButton) == 1:
+            self.swerve.alignment()
 
-        
 
     def driveWithJoystick(self, fieldRelative: bool) -> None:
         # Get the x speed. We are inverting this because Xbox controllers return
         # negative values when we push forward.
         # NOTE: Check if we need inversion here
-        #if fieldRelative:
-        #    self.swerve.updateOdometry()
+        if fieldRelative:
+            self.swerve.updateOdometry()
 
         xSpeed = (
             self.xspeedLimiter.calculate(
-                wpimath.applyDeadband(self.controller.getRawAxis(1), variables.x_deadband)
+                wpimath.applyDeadband(self.controller.getRawAxis(0), variables.x_deadband)
             )
             * variables.kMaxSpeed
         )
@@ -179,7 +149,7 @@ class MyRobot(wpilib.TimedRobot):
         # NOTE: Check if we need inversion here
         ySpeed = (
             -self.yspeedLimiter.calculate(
-                wpimath.applyDeadband(self.controller.getRawAxis(0), variables.y_deadband)
+                wpimath.applyDeadband(self.controller.getRawAxis(1), variables.y_deadband)
             )
             * variables.kTMaxSpeed
         )
@@ -218,6 +188,10 @@ class MyRobot(wpilib.TimedRobot):
         )
         '''
         variables.setTurnState(rot)
+
+        print("x =", xSpeed)
+        print("y =", ySpeed)
+        print("rot =", rot)
 
         #self.swerve.drive(xSpeed, ySpeed, rot, fieldRelative, self.getPeriod())
         self.swerve.drive(xSpeed, ySpeed, rot, fieldRelative, self.getPeriod())
