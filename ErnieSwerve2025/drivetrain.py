@@ -11,9 +11,9 @@ import wpimath.geometry
 import wpimath.kinematics
 import swervemodule
 import variables
-from wpilib import SmartDashboard
+from wpilib import Field2d, SmartDashboard
 import ntcore
-from wpimath.kinematics import SwerveModuleState
+from wpimath.kinematics import SwerveModuleState, ChassisSpeeds
 
 '''
 kMaxSpeed = 1.5  # meters per second
@@ -224,9 +224,9 @@ class Drivetrain:
 
         # Generate the next speeds for the robot
         speeds = ChassisSpeeds(
-            sample.vx + swervemodule.drivePIDController.calculate(pose.X(), sample.x),
-            sample.vy + swervemodule.drivePIDController.calculate(pose.Y(), sample.y),
-            sample.omega + swervemodule.turningPIDController.calculate(pose.rotation().radians(), sample.heading)
+            sample.vx + swervemodule.drivePIDController.calculate(self.pose.X(), sample.x),
+            sample.vy + swervemodule.drivePIDController.calculate(self.pose.Y(), sample.y),
+            sample.omega + swervemodule.turningPIDController.calculate(self.pose.rotation().radians(), sample.heading)
         )
 
         # Apply the generated speeds
