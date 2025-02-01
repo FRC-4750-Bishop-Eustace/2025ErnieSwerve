@@ -14,6 +14,8 @@ import variables
 from wpilib import Field2d, SmartDashboard
 import ntcore
 from wpimath.kinematics import SwerveModuleState, ChassisSpeeds
+from wpimath.estimator import SwerveDrive4PoseEstimator
+import LimelightHelpers
 
 '''
 kMaxSpeed = 1.5  # meters per second
@@ -119,19 +121,15 @@ class Drivetrain:
 
         #NOTE: getPosition - need to determine position value - velocity and angle -
         #NOTE: Need to understand expected units/values returned - is it meters & radians?
-        self.odometry = wpimath.kinematics.SwerveDrive4Odometry(
-            self.kinematics,
-            wpimath.geometry.Rotation2d(self.gyroradiansinit),
-            #self.angler.getAngle(),
-            #self.angler.getRotation2d(),
-            #self.gyro.Translation2d(),
-            #self.gyro.getRotation2d(),
+        self.poseEstimator = SwerveDrive4PoseEstimator(
+            self.kinematics, self.angler.getRotation2d(),
             (
                 self.frontLeft.getPosition(),
                 self.frontRight.getPosition(),
                 self.backRight.getPosition(),
                 self.backLeft.getPosition(),
-            ),
+            ), wpimath.geometry.Pose2d(),
+            [0.05, 0.05, math.pi / 36], [0.5, 0.5, math.pi / 6]
         )
 
         self.angler.reset()
@@ -203,18 +201,25 @@ class Drivetrain:
         # SmartDashboard.putData("fRight", self.frontRight.getState())
         # SmartDashboard.putData("bRight", self.backRight.getState())
     
-    def updateOdometry(self) -> None:
+    def updateOdometry(self, useAprilTags:bool=True) -> None:
         """Updates the field relative position of the robot."""
-        self.odometry.update(
-            #wpimath.geometry.Rotation2d(self.gyroradiansinit),
+        self.poseEstimator.update(
             self.angler.getRotation2d(),
             (
                 self.frontLeft.getPosition(),
                 self.frontRight.getPosition(),
                 self.backRight.getPosition(),
                 self.backLeft.getPosition(),
-            ),
+            )
         )
+
+        if useAprilTags and LimelightHelpers.searchForLimelights(debug=True):
+            LimelightHelpers.setRobotOrientation("limelight", self.poseEstimator.getEstimatedPosition().rotation().degrees(), 0, 0, 0, 0, 0)
+            estimate: LimelightHelpers.PoseEstimate = LimelightHelpers.getRobotPose("limelight")
+
+            if estimate.tagCount > 0:
+                self.poseEstimator.setVisionMeasurementStdDevs([0.7, 0.7, 9999999])
+                self.poseEstimator.addVisionMeasurement(estimate.pose, estimate.timestamp)
     
     #NOTE
     def follow_trajectory(self, sample):
@@ -245,4 +250,11 @@ class Drivetrain:
         self.backRight.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
         self.backLeft.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
 
-
+    def getPose(self) -> wpimath.geometry.Pose2d:
+        return self.poseEstimator.getEstimatedPosition()
+    
+    def getPosition(self) -> wpimath.geometry.Translation2d:
+        return self.getPose().translation()
+    
+    def getRotation(self) -> wpimath.geometry.Rotation2d:
+        return self.getPose().rotation()
