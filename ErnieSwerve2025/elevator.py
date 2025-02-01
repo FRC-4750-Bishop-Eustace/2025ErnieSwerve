@@ -37,12 +37,12 @@ class Elevator:
     
     def get_elevatorEncoder(self):
         print('encoder revolutions = ', self.elevatorEncoder1.getPosition())
-        print('encoder velocity = ', self.elevatorEncoder1.getVelocity())
+        print('encoder velocity = ', self.elevatorEncoder2.getVelocity())
 
     def set_elevatorEncoder(self, x):
         print('Setting Encoder to: ', x)
         self.elevatorEncoder1.setPosition(x)
-        self.elevatorEncoder1.setPosition(-x)
+        self.elevatorEncoder2.setPosition(-x)
     
     def set_elevatorMode(self, mode: int):
         mode = max(4, min(mode, 0))
