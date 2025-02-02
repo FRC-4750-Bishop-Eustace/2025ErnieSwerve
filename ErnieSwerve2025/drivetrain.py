@@ -214,7 +214,12 @@ class Drivetrain:
         )
 
         if useAprilTags and LimelightHelpers.searchForLimelights(debug=True):
-            LimelightHelpers.setRobotOrientation("limelight", self.poseEstimator.getEstimatedPosition().rotation().degrees(), 0, 0, 0, 0, 0)
+            LimelightHelpers.setRobotOrientation(
+                "limelight",
+                self.getRotation().degrees(), self.angler.getRate(), # current position, rate of change
+                self.angler.getPitch(), self.angler.getRawGyroY(), # current position, rate of change
+                self.angler.getRoll(), self.angler.getRawGyroX() # current position, rate of change
+            )
             estimate: LimelightHelpers.PoseEstimate = LimelightHelpers.getRobotPose("limelight")
 
             if estimate.tagCount > 0:
