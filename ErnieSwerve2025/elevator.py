@@ -49,7 +49,7 @@ class Elevator:
         )
 
     def start_elevatorMotor(self, speed: int):
-        if speed is not 0:
+        if speed != 0:
             speed = math.max(1, math.min(speed, -1)) # Clamp speed to [-1 1]
             distance = (abs(self.elevatorEncoder1.getVelocity()) + abs(self.elevatorEncoder2.getVelocity())) / 2
             velocityScale = max(kMinVelocity, kMaxVelocity * (distance / kMaxSpeed))
