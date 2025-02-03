@@ -1,13 +1,12 @@
-# Write your code here :-)
 import math
-import wpilib
 from rev import SparkFlex, SparkFlexConfig, SparkBase
 from wpimath.controller import ProfiledPIDController, ElevatorFeedforward
 import wpimath.kinematics
 import variables
 import wpimath
 
-
+kMinVelocity = 10
+kMinAcceleration = 20
 kMaxVelocity = 50 # TBD - Currently an arbitrary value
 kMaxAcceleration = 125 # TBD - Currently an arbitrary value
 kMaxSpeed = kMaxVelocity + kMaxAcceleration * 0.02
@@ -30,8 +29,6 @@ class Elevator:
         self.elevatorConfig2 = SparkFlexConfig()
         self.elevatorMotor2.configure(self.elevatorConfig2, SparkBase.ResetMode.kNoResetSafeParameters, SparkBase.PersistMode.kPersistParameters)
 
-        
-
         self.heights = heights
 
         self.elevatorPIDController = ProfiledPIDController(
@@ -52,20 +49,33 @@ class Elevator:
         )
 
     def start_elevatorMotor(self, speed: int):
-        speed = math.max(1, math.min(speed, -1)) # Clamp speed to [-1 1]
-        
-        encoderRotation = wpimath.geometry.Rotation2d.fromRotations((self.elevatorEncoder1.getPosition() + self.elevatorEncoder2.getPosition()) / 2)
+        if speed is not 0:
+            speed = math.max(1, math.min(speed, -1)) # Clamp speed to [-1 1]
+            encoderRotation = wpimath.geometry.Rotation2d.fromRotations((self.elevatorEncoder1.getPosition() + self.elevatorEncoder2.getPosition()) / 2)
+            if speed > 0:
+                distance = abs(max(self.heights) - encoderRotation)
+            else:
+                distance = abs(min(self.heights) - encoderRotation)
+            velocityScale = max(kMinVelocity, kMaxVelocity * (distance / max(self.heights)))
+            accelerationScale = max(kMinAcceleration, kMaxAcceleration * (distance / max(self.heights)))
 
-        output = self.elevatorPIDController.calculate(
-            encoderRotation, encoderRotation + speed * kMaxSpeed
-        )
+            self.elevatorPIDController.setConstraints(
+                wpimath.trajectory.TrapezoidProfile.Constraints(
+                    velocityScale,
+                    accelerationScale
+                )
+            )
 
-        feedforward = self.elevatorFeedforward.calculate(
-            self.turningPIDController.getSetpoint().velocity
-        )
-        
-        self.elevatorMotor1.setVoltage((output + feedforward) * speed)
-        self.elevatorMotor2.setVoltage(-(output + feedforward) * speed)
+            output = self.elevatorPIDController.calculate(
+                encoderRotation, encoderRotation + speed * kMaxSpeed
+            )
+
+            feedforward = self.elevatorFeedforward.calculate(
+                self.turningPIDController.getSetpoint().velocity
+            )
+            
+            self.elevatorMotor1.setVoltage((output + feedforward) * speed)
+            self.elevatorMotor2.setVoltage(-(output + feedforward) * speed)
 
     def stop_elevatorMotor(self):
         #print('motor stopped')
