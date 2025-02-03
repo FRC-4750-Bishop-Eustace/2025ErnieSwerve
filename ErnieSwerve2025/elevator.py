@@ -51,13 +51,10 @@ class Elevator:
     def start_elevatorMotor(self, speed: int):
         if speed is not 0:
             speed = math.max(1, math.min(speed, -1)) # Clamp speed to [-1 1]
-            encoderRotation = wpimath.geometry.Rotation2d.fromRotations((self.elevatorEncoder1.getPosition() + self.elevatorEncoder2.getPosition()) / 2)
-            if speed > 0:
-                distance = abs(max(self.heights) - encoderRotation)
-            else:
-                distance = abs(min(self.heights) - encoderRotation)
-            velocityScale = max(kMinVelocity, kMaxVelocity * (distance / max(self.heights)))
+            distance = (abs(self.elevatorEncoder1.getVelocity()) + abs(self.elevatorEncoder2.getVelocity())) / 2
+            velocityScale = max(kMinVelocity, kMaxVelocity * (distance / kMaxSpeed))
             accelerationScale = max(kMinAcceleration, kMaxAcceleration * (distance / max(self.heights)))
+            encoderRotation = wpimath.geometry.Rotation2d.fromRotations((self.elevatorEncoder1.getPosition() + self.elevatorEncoder2.getPosition()) / 2)
 
             self.elevatorPIDController.setConstraints(
                 wpimath.trajectory.TrapezoidProfile.Constraints(
