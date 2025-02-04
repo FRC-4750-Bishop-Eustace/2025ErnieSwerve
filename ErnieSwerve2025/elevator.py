@@ -71,8 +71,8 @@ class Elevator:
                 self.turningPIDController.getSetpoint().velocity
             )
             
-            self.elevatorMotor1.setVoltage((output + feedforward) * speed)
-            self.elevatorMotor2.setVoltage(-(output + feedforward) * speed)
+            self.elevatorMotor1.setVoltage((output + feedforward))
+            self.elevatorMotor2.setVoltage(-(output + feedforward))
 
     def stop_elevatorMotor(self):
         #print('motor stopped')
@@ -94,7 +94,7 @@ class Elevator:
             case 0:
                 while self.elevatorEncoder.getPosition() > 0:
                     self.start_elevatorMotor(-1)
-                    self.set_elevatorEncoder(0)
+                self.set_elevatorEncoder(0) # Reset encoders
             case 1:
                 if self.elevatorEncoder.getPosition() > self.heights[0]:
                     self.start_elevatorMotor(-1)
