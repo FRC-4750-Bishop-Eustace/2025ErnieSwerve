@@ -220,7 +220,7 @@ class Drivetrain:
                 self.angler.getPitch(), self.angler.getRawGyroY(), # current position, rate of change
                 self.angler.getRoll(), self.angler.getRawGyroX() # current position, rate of change
             )
-            estimate: LimelightHelpers.PoseEstimate = LimelightHelpers.getRobotPose("limelight")
+            estimate: LimelightHelpers.PoseEstimate = LimelightHelpers.PoseEstimate.getRobotPoseEstimateBlueMT2("limelight")
 
             if estimate.tagCount > 0:
                 self.poseEstimator.setVisionMeasurementStdDevs([0.7, 0.7, 9999999])
