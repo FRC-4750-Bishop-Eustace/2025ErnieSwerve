@@ -11,6 +11,7 @@ import wpimath
 import wpilib.drive
 import wpimath.filter
 import wpimath.controller
+import wpimath.estimator
 import drivetrain
 import variables
 import elevator
@@ -18,6 +19,7 @@ import navxGyro
 import ntcore
 #import limelight
 #import limelightresults
+import LimelightHelpers
 import json
 import time
 #import limelight
@@ -29,6 +31,7 @@ from wpilib import SmartDashboard, Field2d
 from cscore import CameraServer
 from wpilib import SmartDashboard
 import choreo
+# import urcl
 
 class MyRobot(wpilib.TimedRobot):
     def robotInit(self) -> None:
@@ -68,10 +71,15 @@ class MyRobot(wpilib.TimedRobot):
         # ValueError is thrown if the file does not exist or is invalid
         
         try:
-            self.trajectory = choreo.load_swerve_trajectory("myTraj_11") # 
+            self.trajectory = choreo.load_swerve_trajectory("myTraj_15") # 
         except ValueError:
         # If the trajectory is not found, ChoreoLib already prints to DriverStation
             pass
+
+        wpilib.DataLogManager.start()
+        #urcl.start()
+
+        #urcl.start(wpilib.DataLogManager.getLog())
         
 
     def robotPeriodic(self):
@@ -79,14 +87,15 @@ class MyRobot(wpilib.TimedRobot):
 
     #FUTURE
     def autonomousInit(self):
+        self.swerve.resetGyro()
 
         if self.trajectory:
             # Get the initial pose of the trajectory
             initial_pose = self.trajectory.get_initial_pose(self.is_red_alliance())
 
-            # if initial_pose:
+            if initial_pose:
                 # Reset odometry to the start of the trajectory
-            self.swerve.updateOdometry()
+                self.swerve.updateOdometry()
 
         # Reset and start the timer when the autonomous period begins
         self.timer.restart()
@@ -110,10 +119,15 @@ class MyRobot(wpilib.TimedRobot):
     def is_red_alliance(self):
         return wpilib.DriverStation.getAlliance() == wpilib.DriverStation.Alliance.kRed
 
+    def teleopInit(self) -> None:
+        self.swerve.resetRobotPose(self.swerve.odometry.getPose())
+        self.initPose = self.swerve.odometry.getPose()
+
+
     def teleopPeriodic(self) -> None:
 
         #self.swerve.updateOdometry()
-        self.field.setRobotPose(self.swerve.odometry.getPose())
+        #self.field.setRobotPose(self.swerve.odometry.getPose())
 
         self.tx = self.lmtable.getNumber('tx', None)
         self.ty = self.lmtable.getNumber('ty', None)
@@ -122,11 +136,20 @@ class MyRobot(wpilib.TimedRobot):
         self.tid = self.lmtable.getNumber('tid', None)
         self.hw = self.lmtable.getNumber('hw', None)
 
-        self.botpose = self.lmtable.getEntry('botpose').getDoubleArray([])
+        self.botpose = self.lmtable.getEntry('botpose_wpiblue').getDoubleArray([])
 
-        #print('pose =', self.botpose)
-        #print("hw", self.hw)
+        #self.tagpose = self.botpose.toPose2d()
+        #self.field.setRobotPose(self.botpose[0], self.botpose[1], self.botpose[2])
 
+        self.swerve.UpdateEstimator()
+        #print(self.visionPose)
+        #self.swerve.estimator.addVisionMeasurement(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]), self.getPeriod())
+        self.visionPose = self.swerve.estimator.getEstimatedPosition()
+        #self.field.setRobotPose(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]))
+        self.field.setRobotPose(self.visionPose)
+        print(self.visionPose)
+        #print(self.swerve.odometry.getPose())
+        #print(self.swerve.estimator.getEstimatedPosition())
         '''
         result = ll.get_latest_results()
         parsed_result = limelightresults.parse_results(result)
@@ -142,6 +165,9 @@ class MyRobot(wpilib.TimedRobot):
             self.fieldDrive = 2
         if self.controller.getRawButton(variables.circleButton) == 1:
             self.fieldDrive = 1
+
+        if self.controller.getRawButton(variables.triangleButton) == 1:
+            self.swerve.resetGyro()
 
         if self.fieldDrive == 2:
             self.driveWithJoystick(True)

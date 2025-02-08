@@ -5,9 +5,9 @@ import math
 import robot
 
 # SPEED CONFIG
-kMaxSpeed = 3.5  # meters per second
+kMaxSpeed = 4.6  # meters per second 4.5
 kRMaxSpeed = 8.5 # 10
-kTMaxSpeed = 3.0
+kTMaxSpeed = 4.6 #4.5
 kMaxAngularSpeed = math.pi  # 1/2 rotation per second
 frontLeftZero = 0
 frontRightZero = 0
@@ -22,8 +22,8 @@ drivePID_D = 0
 turnPID_P = 7.8 #12 # 3
 turnPID_I = 0
 turnPID_D = 0.055 #0.1 #0.4750
-driveFF_1 = 1.8
-driveFF_2 = 3
+driveFF_1 = 0.06#1.8
+driveFF_2 = 2.5#3
 turnFF_1 = 0 #0.05
 turnFF_2 = 0 #0.45 
 

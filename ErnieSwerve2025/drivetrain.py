@@ -8,6 +8,7 @@ import math
 import navx
 import wpilib
 import wpimath.geometry
+from wpimath.geometry import Pose2d
 import wpimath.kinematics
 import swervemodule
 import variables
@@ -16,6 +17,9 @@ import ntcore
 from wpimath.kinematics import SwerveModuleState
 from wpilib import Field2d
 import time
+import wpimath.estimator
+from wpimath.estimator import SwerveDrive4PoseEstimator
+import LimelightHelpers
 
 '''
 kMaxSpeed = 1.5  # meters per second
@@ -126,15 +130,14 @@ class Drivetrain:
             ),
         )
 
-        self.x_controller2 = wpimath.controller.PIDController(4.3, 0, 0.043)
-        self.y_controller2 = wpimath.controller.PIDController(4.3, 0, 0.043)
-        self.heading_controller2 = wpimath.controller.PIDController(1.5, 0, 0.015)
+        self.x_controller2 = wpimath.controller.PIDController(0.02, 0, 0.001)
+        self.y_controller2 = wpimath.controller.PIDController(0.02, 0, 0.001)
+        self.heading_controller2 = wpimath.controller.PIDController(1, 0, 0)
 
         SmartDashboard.putData("A-PIDx", self.x_controller2)
         SmartDashboard.putData("A-PIDy", self.y_controller2)
         SmartDashboard.putData("A-PIDtune", self.heading_controller2)
         #SmartDashboard.putData("A-PIDprof", self.heading_controller)
-        
 
         #NOTE: Just defining the fixed kinematics of the bot
         self.kinematics = wpimath.kinematics.SwerveDrive4Kinematics(
@@ -161,11 +164,22 @@ class Drivetrain:
             ),
         )
 
+        self.estimator = wpimath.estimator.SwerveDrive4PoseEstimator(
+            self.kinematics,
+            self.angler.getRotation2d(),
+            [
+                self.frontLeft.getPosition(),
+                self.frontRight.getPosition(),
+                self.backRight.getPosition(),
+                self.backLeft.getPosition(),
+            ],
+            self.odometry.getPose()
+        )
 
         self.angler.reset()
 
         self.timer = wpilib.Timer()
-        self.timer.reset( )
+        self.timer.reset()
         self.timer.start()
         self.period = self.timer.get()
         #self.heading_controller.enableContinuousInput(-math.pi, math.pi)
@@ -193,7 +207,7 @@ class Drivetrain:
         self.rot = rot
 
         #if fieldRelative:
-        self.updateOdometry()
+        #self.updateOdometry()
 
         self.gyro = self.angler.getAngle()
         self.gyroradians = wpimath.units.degreesToRadians(self.gyro)
@@ -230,6 +244,7 @@ class Drivetrain:
             swerveModuleStates[3]
         ])
 
+        SmartDashboard.putNumber("fronLeftVolt", (self.frontLeft.driveMotor.getAppliedOutput() * self.frontLeft.driveMotor.getAppliedOutput()))
         # SmartDashboard.putData("frontLeft", self.frontLeft)
         # SmartDashboard.putData("bLeft", self.backLeft.getState())
         # SmartDashboard.putData("fRight", self.frontRight.getState())
@@ -247,7 +262,34 @@ class Drivetrain:
                 self.backLeft.getPosition(),
             ),
         )
-    
+    '''
+    def updateOdometry2(self, useAprilTags:bool = True) -> None:
+        """Updates the field relative position of the robot."""
+        self.estimator.update(
+            #wpimath.geometry.Rotation2d(self.gyroradiansinit),
+            self.angler.getRotation2d(),
+            (
+                self.frontLeft.getPosition(),
+                self.frontRight.getPosition(),
+                self.backRight.getPosition(),
+                self.backLeft.getPosition(),
+            ),
+        )
+        
+        if useAprilTags:
+            LimelightHelpers.setRobotOrientation(
+                "limelight", 
+                self.getRotation().degrees(), self.angler.getRate(), 
+                self.angler.getPitch(), self.angler.getRawGyroY(), 
+                self.angler.getRoll(), self.angler.getRawGyroX()
+                )
+            estimate: LimelightHelpers.PoseEstimate = LimelightHelpers.PoseEstimate.getRobotPoseEstimate(self, "limelight", "botpose_orb_wpiblue")
+
+            if estimate.tagCount > 0:
+                self.estimator.setVisionMeasurementStdDevs([0.7, 0.7, 9999999])
+                self.estimator.addVisionMeasurement(estimate.pose, estimate.timestamp)
+    '''
+                
     #NOTE
     def follow_trajectory(self, sample):
         # Get the current pose of the robot
@@ -266,18 +308,36 @@ class Drivetrain:
         print("1 =", speeds[1])
         print("2 =", speeds[2])
 
-
-
-    def alignment(self) -> None:
-        self.frontLeft.setDesiredState(wpimath.kinematics.SwerveModuleState(0, wpimath.geometry.Rotation2d(0)))
-        self.frontRight.setDesiredState(wpimath.kinematics.SwerveModuleState(0, wpimath.geometry.Rotation2d(0)))
-        self.backRight.setDesiredState(wpimath.kinematics.SwerveModuleState(0, wpimath.geometry.Rotation2d(0)))
-        self.backLeft.setDesiredState(wpimath.kinematics.SwerveModuleState(0, wpimath.geometry.Rotation2d(0)))
-
-    def autoTest(self) -> None:
-        self.frontLeft.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
-        self.frontRight.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
-        self.backRight.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
-        self.backLeft.setDesiredState(wpimath.kinematics.SwerveModuleState(1, wpimath.geometry.Rotation2d(1)))
+    def resetRobotPose(self, pose):
+        self.odometry.resetPosition(
+            self.angler.getRotation2d(),
+            [
+                self.frontLeft.getPosition(),
+                self.frontRight.getPosition(),
+                self.backRight.getPosition(),
+                self.backLeft.getPosition(),
+            ], 
+            Pose2d(0,0,0)
+            )
+    
+    def resetGyro(self):
+        self.angler.reset()
+    
+    def UpdateEstimator(self):
+        self.estimator.update(
+            self.angler.getRotation2d(),
+            [
+                self.frontLeft.getPosition(),
+                self.frontRight.getPosition(),
+                self.backRight.getPosition(),
+                self.backLeft.getPosition(),
+            ]
+        )
+    
+    def getPose(self) -> wpimath.geometry.Pose2d:
+        return self.estimator.getEstimatedPosition()
+    
+    def getRotation(self) -> wpimath.geometry.Rotation2d:
+        return self.getPose().rotation()
 
 

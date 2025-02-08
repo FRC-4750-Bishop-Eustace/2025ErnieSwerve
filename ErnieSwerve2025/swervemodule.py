@@ -22,6 +22,7 @@ from wpilib import SmartDashboard
 
 
 
+
 kWheelRadius = 0.0508 # In meters
 kDriveReduction = 425 / 63
 kEncoderResolution = 4096
@@ -78,8 +79,8 @@ class SwerveModule:
         self.driveEncoder = self.driveMotor.getEncoder()
         self.turningEncoder = hardware.CANcoder(turningEncoderID, "rio")
         self.driveConfig = SparkMaxConfig()
-        self.driveConfig.encoder.velocityConversionFactor(math.tau * kWheelRadius / kVEncoderResolution).positionConversionFactor((kWheelRadius * (4 * math.pi)) / kDriveReduction)
-        self.driveConfig.encoder.positionConversionFactor((kWheelRadius * (4 * math.pi)) / kDriveReduction)
+        self.driveConfig.encoder.velocityConversionFactor((math.tau * kWheelRadius / 60)/kDriveReduction)
+        self.driveConfig.encoder.positionConversionFactor((kWheelRadius * (2 * math.pi)) / kDriveReduction)
         self.driveMotor.configure(self.driveConfig, SparkBase.ResetMode.kNoResetSafeParameters, SparkBase.PersistMode.kPersistParameters)
         #print(turningEncoderID, self.turningEncoder.getAbsolutePosition())
         #self.turningEncoder.configFeedbackCoefficient((2 * math.pi / 4096), "rad", hardware.SensorTimeBase(1))
