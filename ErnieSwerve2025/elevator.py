@@ -3,7 +3,7 @@ from rev import SparkFlex, SparkFlexConfig, SparkBase
 from wpimath.controller import ProfiledPIDController, ElevatorFeedforward
 import wpimath.kinematics
 import variables
-import wpimath
+import wpimath.geometry
 
 kMinVelocity = 10
 kMinAcceleration = 20
@@ -48,9 +48,9 @@ class Elevator:
             variables.elevatorFF_4
         )
 
-    def start_elevatorMotor(self, speed: int):
+    def start_elevatorMotor(self, speed: float):
         if speed != 0:
-            speed = math.max(1, math.min(speed, -1)) # Clamp speed to [-1 1]
+            speed = max(1.0, min(speed, -1.0)) # Clamp speed to [-1.0 1.0]
             distance = (abs(self.elevatorEncoder1.getVelocity()) + abs(self.elevatorEncoder2.getVelocity())) / 2
             velocityScale = max(kMinVelocity, kMaxVelocity * (distance / kMaxSpeed))
             accelerationScale = max(kMinAcceleration, kMaxAcceleration * (distance / max(self.heights)))
@@ -64,7 +64,7 @@ class Elevator:
             )
 
             output = self.elevatorPIDController.calculate(
-                encoderRotation, encoderRotation + speed * kMaxSpeed
+                encoderRotation.degrees(), encoderRotation.degrees() + speed * kMaxSpeed
             )
 
             feedforward = self.elevatorFeedforward.calculate(
