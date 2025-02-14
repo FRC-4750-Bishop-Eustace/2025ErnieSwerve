@@ -15,6 +15,7 @@ import wpimath.estimator
 import drivetrain
 import variables
 import elevator
+import elevator2
 import navxGyro
 import ntcore
 #import limelight
@@ -44,6 +45,7 @@ class MyRobot(wpilib.TimedRobot):
         #self.odometry = 
 
         self.elevator = elevator.Elevator(16, 17, [100, 200, 300, 400])
+        self.elevator2 = elevator2.Elevator(18)
         #self.limelight = limelight.PoseEstimate(pose, timestamp, latency, tagCount, tagSpan, avgTagDist, avgTagArea, fiducials)
 
         # navxGyro is a file to test the navx Gyro. This can be ignored/commented out.
@@ -71,7 +73,7 @@ class MyRobot(wpilib.TimedRobot):
         # ValueError is thrown if the file does not exist or is invalid
         
         try:
-            self.trajectory = choreo.load_swerve_trajectory("myTraj_15") # 
+            self.trajectory = choreo.load_swerve_trajectory("Test3") # 
         except ValueError:
         # If the trajectory is not found, ChoreoLib already prints to DriverStation
             pass
@@ -92,6 +94,10 @@ class MyRobot(wpilib.TimedRobot):
         if self.trajectory:
             # Get the initial pose of the trajectory
             initial_pose = self.trajectory.get_initial_pose(self.is_red_alliance())
+            
+            #print(initial_pose)
+
+            self.swerve.resetRobotPose(initial_pose)
 
             if initial_pose:
                 # Reset odometry to the start of the trajectory
@@ -147,7 +153,7 @@ class MyRobot(wpilib.TimedRobot):
         self.visionPose = self.swerve.estimator.getEstimatedPosition()
         #self.field.setRobotPose(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]))
         self.field.setRobotPose(self.visionPose)
-        print(self.visionPose)
+        #print(self.visionPose)
         #print(self.swerve.odometry.getPose())
         #print(self.swerve.estimator.getEstimatedPosition())
         '''
@@ -168,6 +174,11 @@ class MyRobot(wpilib.TimedRobot):
 
         if self.controller.getRawButton(variables.triangleButton) == 1:
             self.swerve.resetGyro()
+        
+        if self.controller.getRawButton(variables.squareButton) == 1:
+            self.elevator2.start_elevatorMotor()
+        else:
+            self.elevator2.stop_elevatorMotor()
 
         if self.fieldDrive == 2:
             self.driveWithJoystick(True)
@@ -176,13 +187,14 @@ class MyRobot(wpilib.TimedRobot):
     
         self.navxGyro.getGyro()
         
+        '''
         if self.pad.getRawButton(6) == 1:
             self.elevator.start_elevatorMotor(5)
         elif self.pad.getRawButton(9) == 1:
             self.elevator.start_elevatorMotor(-5)
         else:
             self.elevator.stop_elevatorMotor()
-
+        '''
         
 
     def driveWithJoystick(self, fieldRelative: bool) -> None:
