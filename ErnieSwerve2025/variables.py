@@ -27,12 +27,12 @@ turnPID_D = 0.055 #0.1 #0.4750
 turnFF_1 = 0 #0.05
 turnFF_2 = 0 #0.45
 elevatorPID_P = 0.1
-elevatorPID_I = 0.0001 # Small value for steady-state error
+elevatorPID_I = 0
 elevatorPID_D = 0.01 # Dampening for oscillation
-elevatorFF_1 = 0.3 # kS: Static friction compensation
-elevatorFF_2 = 0.5 # kG: Gravity compensation
-elevatorFF_3 = 0.15 # kV: Velocity feedforward
-elevatorFF_4 = 0.02 # kA: Acceleration feedforward
+elevatorFF_1 = 0 # kS: Static friction compensation
+elevatorFF_2 = 0 # kG: Gravity compensation
+elevatorFF_3 = 0 # kV: Velocity feedforward
+elevatorFF_4 = 0 # kA: Acceleration feedforward
 
 TurnState = 0
 

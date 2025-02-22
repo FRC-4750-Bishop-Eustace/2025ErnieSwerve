@@ -29,6 +29,7 @@ from wpilib import SmartDashboard, Field2d
 from cscore import CameraServer
 from wpilib import SmartDashboard
 import choreo
+from lidar import TFMini
 
 class MyRobot(wpilib.TimedRobot):
     def robotInit(self) -> None:
@@ -69,8 +70,12 @@ class MyRobot(wpilib.TimedRobot):
             pass
         '''
 
+        self.luna = TFMini(wpilib.SerialPort.Port.kMXP)
+
     def robotPeriodic(self):
         self.swerve.updateOdometry(True)
+        distance = self.tfluna.readDistanceCM()
+        SmartDashboard.putNumber("TF Mini Distance (CM)", distance)
 
     #FUTURE
     def autonomousInit(self):

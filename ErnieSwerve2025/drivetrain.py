@@ -13,7 +13,7 @@ import swervemodule
 import variables
 from wpilib import Field2d, SmartDashboard
 import ntcore
-from wpimath.kinematics import SwerveModuleState, ChassisSpeeds
+from wpimath.kinematics import SwerveModuleState, ChassisSpeeds, SwerveDrive4Odometry
 from wpimath.estimator import SwerveDrive4PoseEstimator
 import LimelightHelpers
 
@@ -128,7 +128,8 @@ class Drivetrain:
                 self.frontRight.getPosition(),
                 self.backRight.getPosition(),
                 self.backLeft.getPosition(),
-            ), wpimath.geometry.Pose2d(),
+            ),
+            self.odometry.getPose(),
             [0.05, 0.05, math.pi / 36], [0.5, 0.5, math.pi / 6]
         )
 

@@ -5,11 +5,8 @@ import wpimath.kinematics
 import variables
 import wpimath.geometry
 
-kMinVelocity = 10
-kMinAcceleration = 20
-kMaxVelocity = 50 # TBD - Currently an arbitrary value
-kMaxAcceleration = 125 # TBD - Currently an arbitrary value
-kMaxSpeed = kMaxVelocity + kMaxAcceleration * 0.02
+kMaxVelocity = 50  # TBD - Currently an arbitrary value
+kMaxAcceleration = 125  # TBD - Currently an arbitrary value
 
 class Elevator:
     def __init__(
@@ -48,70 +45,50 @@ class Elevator:
             variables.elevatorFF_4
         )
 
-    def start_elevatorMotor(self, speed: float):
-        if speed != 0:
-            speed = max(1.0, min(speed, -1.0)) # Clamp speed to [-1.0 1.0]
-            distance = (abs(self.elevatorEncoder1.getVelocity()) + abs(self.elevatorEncoder2.getVelocity())) / 2
-            velocityScale = max(kMinVelocity, kMaxVelocity * (distance / kMaxSpeed))
-            accelerationScale = max(kMinAcceleration, kMaxAcceleration * (distance / max(self.heights)))
-            encoderRotation = wpimath.geometry.Rotation2d.fromRotations((self.elevatorEncoder1.getPosition() + self.elevatorEncoder2.getPosition()) / 2)
-
-            self.elevatorPIDController.setConstraints(
-                wpimath.trajectory.TrapezoidProfile.Constraints(
-                    velocityScale,
-                    accelerationScale
-                )
-            )
+    def start_elevatorMotor(self, setpoint: float) -> None:
+        """Start the elevator motor with the given setpoint."""
+        position1 = self.elevatorEncoder1.getPosition()
+        position2 = self.elevatorEncoder2.getPosition()
+        
+        if position1 > 0 and position2 <= self.heights[3]:
+            avg = (position1 - position2) / 2  # Adjusted to account for opposite directions
+            encoderRotation = wpimath.geometry.Rotation2d.fromRotations(avg)
 
             output = self.elevatorPIDController.calculate(
-                encoderRotation.degrees(), encoderRotation.degrees() + speed * kMaxSpeed
+                encoderRotation.degrees(), setpoint
             )
 
             feedforward = self.elevatorFeedforward.calculate(
-                self.turningPIDController.getSetpoint().velocity
+                self.elevatorPIDController.getSetpoint().velocity
             )
             
-            self.elevatorMotor1.setVoltage((output + feedforward))
-            self.elevatorMotor2.setVoltage(-(output + feedforward))
+            voltage = output + feedforward
+            self.elevatorMotor1.setVoltage(voltage)
+            self.elevatorMotor2.setVoltage(-voltage)
 
-    def stop_elevatorMotor(self):
-        #print('motor stopped')
+    def stop_elevatorMotor(self) -> None:
+        """Stop the elevator motor."""
         self.elevatorMotor1.setVoltage(0)
         self.elevatorMotor2.setVoltage(0)
     
-    def get_elevatorEncoder(self):
-        print('encoder revolutions = ', self.elevatorEncoder1.getPosition())
-        print('encoder velocity = ', self.elevatorEncoder2.getVelocity())
+    def get_elevatorEncoder(self) -> None:
+        """Print the elevator encoder positions and velocities."""
+        print('encoder revolutions =', self.elevatorEncoder1.getPosition())
+        print('encoder velocity =', self.elevatorEncoder2.getVelocity())
 
-    def set_elevatorEncoder(self, x):
-        print('Setting Encoder to: ', x)
+    def set_elevatorEncoder(self, x: float) -> None:
+        """Set the elevator encoder positions."""
+        print('Setting Encoder to:', x)
         self.elevatorEncoder1.setPosition(x)
         self.elevatorEncoder2.setPosition(-x)
     
-    def set_elevatorMode(self, mode: int):
-        mode = max(4, min(mode, 0))
-        match mode:
-            case 0:
-                while self.elevatorEncoder.getPosition() > 0:
-                    self.start_elevatorMotor(-1)
-                self.set_elevatorEncoder(0) # Reset encoders
-            case 1:
-                if self.elevatorEncoder.getPosition() > self.heights[0]:
-                    self.start_elevatorMotor(-1)
-                elif self.elevatorEncoder.getPosition() < self.heights[0]:
-                    self.start_elevatorMotor(1)
-            case 2:
-                if self.elevatorEncoder.getPosition() > self.heights[1]:
-                    self.start_elevatorMotor(-1)
-                elif self.elevatorEncoder.getPosition() < self.heights[1]:
-                    self.start_elevatorMotor(1)
-            case 3:
-                if self.elevatorEncoder.getPosition() > self.heights[2]:
-                    self.start_elevatorMotor(-1)
-                elif self.elevatorEncoder.getPosition() < self.heights[2]:
-                    self.start_elevatorMotor(1)
-            case 4:
-                if self.elevatorEncoder.getPosition() > self.heights[3]:
-                    self.start_elevatorMotor(-1)
-                elif self.elevatorEncoder.getPosition() < self.heights[3]:
-                    self.start_elevatorMotor(1)
+    def set_elevatorMode(self, mode: int) -> None:
+        """Set the elevator mode based on the given mode."""
+        setpoints = {
+            0: 0,
+            1: self.heights[0],
+            2: self.heights[1],
+            3: self.heights[2],
+            4: self.heights[3]
+        }
+        self.start_elevatorMotor(setpoints.get(mode, 0))
