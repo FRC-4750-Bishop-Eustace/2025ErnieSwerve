@@ -30,6 +30,7 @@ from cscore import CameraServer
 from wpilib import SmartDashboard
 import choreo
 from lidar import TFMini
+from BNO055 import BOO055
 
 class MyRobot(wpilib.TimedRobot):
     def robotInit(self) -> None:
@@ -71,6 +72,7 @@ class MyRobot(wpilib.TimedRobot):
         '''
 
         self.luna = TFMini(wpilib.SerialPort.Port.kMXP)
+        self.bno055 = BOO055(port=wpilib.SerialPort.Port.kMXP)
 
     def robotPeriodic(self):
         self.swerve.updateOdometry(True)

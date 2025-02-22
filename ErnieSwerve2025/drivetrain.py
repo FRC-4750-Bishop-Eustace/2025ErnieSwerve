@@ -129,7 +129,7 @@ class Drivetrain:
                 self.backRight.getPosition(),
                 self.backLeft.getPosition(),
             ),
-            self.odometry.getPose(),
+            wpimath.geometry.Pose2d(),
             [0.05, 0.05, math.pi / 36], [0.5, 0.5, math.pi / 6]
         )
 
