@@ -18,6 +18,7 @@ import elevator
 import elevator2
 import navxGyro
 import ntcore
+import commands2
 #import limelight
 #import limelightresults
 import LimelightHelpers
@@ -34,7 +35,8 @@ from wpilib import SmartDashboard
 import choreo
 # import urcl
 
-class MyRobot(wpilib.TimedRobot):
+#wpilib.TimedRobot
+class MyRobot(commands2.TimedCommandRobot):
     def robotInit(self) -> None:
         """Robot initialization function"""
         self.controller = wpilib.Joystick(variables.joystickPort1)
@@ -73,16 +75,13 @@ class MyRobot(wpilib.TimedRobot):
         # ValueError is thrown if the file does not exist or is invalid
         
         try:
-            self.trajectory = choreo.load_swerve_trajectory("Test15") # 
+            self.trajectory = choreo.load_swerve_trajectory("Path1")
+            self.trajectory2 = choreo.load_swerve_trajectory("Path4") # 
         except ValueError:
         # If the trajectory is not found, ChoreoLib already prints to DriverStation
             pass
-
+              
         wpilib.DataLogManager.start()
-        #urcl.start()
-
-        #urcl.start(wpilib.DataLogManager.getLog())
-        
 
     def robotPeriodic(self):
         self.swerve.updateOdometry()
@@ -91,17 +90,29 @@ class MyRobot(wpilib.TimedRobot):
     def autonomousInit(self):
         self.swerve.resetGyro()
 
+        #sample1 = self.trajectory.sample_at(self.timer.get(), self.is_red_alliance())
+        #sample2 = self.trajectory2.sample_at(self.timer.get(), self.is_red_alliance())
+
+        follow1 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory)).withTimeout(6.7)
+        follow2 = commands2.cmd.run(lambda: self.FollowChoreoPath(self.trajectory2)).withTimeout(4.4)
+        stop = commands2.cmd.run(lambda: self.StopPath())
+        
         if self.trajectory:
             # Get the initial pose of the trajectory
             initial_pose = self.trajectory.get_initial_pose(self.is_red_alliance())
-            
-            #print(initial_pose)
 
             self.swerve.resetRobotPose(initial_pose)
 
             if initial_pose:
                 # Reset odometry to the start of the trajectory
                 self.swerve.updateOdometry()
+
+        self.path_command = commands2.SequentialCommandGroup([
+            follow1,
+            follow2,
+            stop
+        ])
+        self.path_command.schedule()
 
         # Reset and start the timer when the autonomous period begins
         self.timer.restart()
@@ -111,20 +122,33 @@ class MyRobot(wpilib.TimedRobot):
 
     def autonomousPeriodic(self) -> None:
 
+        self.matchTimer = self.timer.getMatchTime()
+
         self.field.setRobotPose(self.swerve.odometry.getPose())
 
+        commands2.CommandScheduler.getInstance().run()
+
+        '''
         if self.trajectory:
             # Sample the trajectory at the current time into the autonomous period
             sample = self.trajectory.sample_at(self.timer.get(), self.is_red_alliance())
 
             if sample:
-                if sample.timestamp > 11.5:
-                    self.swerve.drive(0,0,0,True,self.getPeriod())
-                else:
-                    self.swerve.follow_trajectory(sample)
-                    
-                
+                self.swerve.follow_trajectory(sample)
+                #print(self.trajectory.get_final_pose())
+            
+            #print(self.trajectory.get_total_time())
+        
+        if self.trajectory2:
+            # Sample the trajectory at the current time into the autonomous period
+            sample2 = self.trajectory2.sample_at(self.timer.get(), self.is_red_alliance())
 
+            if sample2:
+                self.swerve.follow_trajectory(sample2)
+                #print(self.trajectory.get_final_pose())
+            
+            #print(self.trajectory.get_total_time())
+        '''
     def is_red_alliance(self):
         return wpilib.DriverStation.getAlliance() == wpilib.DriverStation.Alliance.kRed
 
@@ -138,6 +162,8 @@ class MyRobot(wpilib.TimedRobot):
         #self.swerve.updateOdometry()
         #self.field.setRobotPose(self.swerve.odometry.getPose())
 
+        self.matchTimer = self.timer.getFPGATimestamp()
+
         self.tx = self.lmtable.getNumber('tx', None)
         self.ty = self.lmtable.getNumber('ty', None)
         self.ta = self.lmtable.getNumber('ta', None)
@@ -147,27 +173,15 @@ class MyRobot(wpilib.TimedRobot):
 
         self.botpose = self.lmtable.getEntry('botpose_wpiblue').getDoubleArray([])
 
-        #self.tagpose = self.botpose.toPose2d()
-        #self.field.setRobotPose(self.botpose[0], self.botpose[1], self.botpose[2])
-
+        if self.ta > 2.0:
+            self.swerve.estimator.addVisionMeasurement(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]-90), self.matchTimer)
+        #self.swerve.addVision(self.botpose[0], self.botpose[1], self.botpose[5])
         self.swerve.UpdateEstimator()
-        #print(self.visionPose)
-        #self.swerve.estimator.addVisionMeasurement(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]), self.getPeriod())
         self.visionPose = self.swerve.estimator.getEstimatedPosition()
-        #self.field.setRobotPose(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]))
-        self.field.setRobotPose(self.visionPose)
+        #rint(self.getPeriod())
+        #print(wpimath.geometry.Pose2d(self.botpose[0], self.botpose[1], self.botpose[5]), self.matchTimer)
         #print(self.visionPose)
-        #print(self.swerve.odometry.getPose())
-        #print(self.swerve.estimator.getEstimatedPosition())
-        '''
-        result = ll.get_latest_results()
-        parsed_result = limelightresults.parse_results(result)
-        if parsed_result is not None:
-            print("valid targets: ", parsed_result.validity, ", pipelineIndex: ", parsed_result.pipeline_id,", Targeting Latency: ", parsed_result.targeting_latency)
-            #for tag in parsed_result.fiducialResults:
-            #    print(tag.robot_pose_target_space, tag.fiducial_id)
-        time.sleep(1)  # Set this to 0 for max fps
-        '''
+        self.field.setRobotPose(self.visionPose)
 
         # CHANGE TO FIELD DRIVE VS BOT RELETIVE
         if self.controller.getRawButton(variables.crossButton) == 1:
@@ -253,15 +267,6 @@ class MyRobot(wpilib.TimedRobot):
                 -wpimath.applyDeadband((self.controller.getRawAxis(4) + 1) / 2, variables.rot_deadband)
             )
             * variables.kRMaxSpeed)
-
-        '''
-        rot = (
-            (self.rotLimiter.calculate(
-                wpimath.applyDeadband(self.controller.getRawAxis(2), variables.rot_deadband)
-            ) / 2)
-            * variables.kRMaxSpeed
-        )
-        '''
         
 
         if self.dPad == 0:
@@ -278,45 +283,50 @@ class MyRobot(wpilib.TimedRobot):
             rot = 0.5
         if self.controller.getRawButton(variables.R1Button) == 1:
             rot = -0.5
+        
+        if self.controller.getRawButton(variables.PSbutton) == 1:
+            self.rot_limelight = self.limelight_aim()
+            rot = self.rot_limelight
+
+            self.forward_limelight = self.limelight_range()
+            xSpeed = self.forward_limelight
+
+            fieldRelative = False
+
     
         variables.setTurnState(rot)
 
         #self.swerve.drive(xSpeed, ySpeed, rot, fieldRelative, self.getPeriod())
         self.swerve.drive(xSpeed, ySpeed, rot, fieldRelative, self.getPeriod())
+    
+    def limelight_aim(self):
+        self.kP = 0.035
+        self.tx = self.lmtable.getNumber('tx', None)
 
-    def microAdjustmentMode(self, fieldRelative: bool) -> None:
+        self.targetingAngularVelocity = self.tx * self.kP
+
+        self.targetingAngularVelocity *= variables.kRMaxSpeed
         
-        '''
-        xSpeed = (
-            -self.xspeedLimiter.calculate(
-                wpimath.applyDeadband(self.controller.getRawAxis(1), variables.x_deadband)
-            )
-            * variables.kMaxSpeed
-        )
+        self.targetingAngularVelocity *= -1.0
 
-        ySpeed = (
-            -self.yspeedLimiter.calculate(
-                wpimath.applyDeadband(self.controller.getRawAxis(0), variables.y_deadband)
-            )
-            * variables.kTMaxSpeed
-        )
+        return self.targetingAngularVelocity
 
-        rot = (
-            (self.rotLimiter.calculate(
-                wpimath.applyDeadband((self.controller.getRawAxis(3) + 1) / 2, variables.rot_deadband)
-            ) +
-                -wpimath.applyDeadband((self.controller.getRawAxis(4) + 1) / 2, variables.rot_deadband)
-            )
-            * variables.kRMaxSpeed)
-        '''
+    def limelight_range(self):
+        self.kP = 0.1
+        self.ty = self.lmtable.getNumber('ty', None)
 
-        
-        if self.dPad == -1:
-            xSpeed = 0
-            ySpeed = 0
-            rot = 0
-        
+        self.targetingForwardSpeed = self.ty * self.kP
+        self.targetingForwardSpeed *= variables.kMaxSpeed
+        self.targetingForwardSpeed *= -1.0
 
-        variables.setTurnState(rot)
+        return self.targetingForwardSpeed
+    
+    def FollowChoreoPath(self, trajectory):
+        sample = trajectory.sample_at(self.timer.get(), self.is_red_alliance())
 
-        self.swerve.drive(xSpeed, ySpeed, rot, fieldRelative, self.getPeriod())
+        if sample:
+            self.swerve.follow_trajectory(sample)
+    
+    def StopPath(self):
+        self.swerve.drive(0, 0, 0, True, self.getPeriod())
+

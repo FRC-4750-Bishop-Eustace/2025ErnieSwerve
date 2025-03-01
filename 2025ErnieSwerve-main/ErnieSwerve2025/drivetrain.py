@@ -178,7 +178,9 @@ class Drivetrain:
                 self.backRight.getPosition(),
                 self.backLeft.getPosition(),
             ],
-            self.odometry.getPose()
+            self.odometry.getPose(),
+            ([0.1, 0.1, 0.1]),
+            ([1.0, 1.0, 5.0])
         )
 
         self.angler.reset()
@@ -250,10 +252,7 @@ class Drivetrain:
         ])
 
         SmartDashboard.putNumber("fronLeftVolt", (self.frontLeft.driveMotor.getAppliedOutput() * self.frontLeft.driveMotor.getAppliedOutput()))
-        # SmartDashboard.putData("frontLeft", self.frontLeft)
-        # SmartDashboard.putData("bLeft", self.backLeft.getState())
-        # SmartDashboard.putData("fRight", self.frontRight.getState())
-        # SmartDashboard.putData("bRight", self.backRight.getState())
+
     
     def updateOdometry(self) -> None:
         """Updates the field relative position of the robot."""
@@ -268,33 +267,6 @@ class Drivetrain:
                 self.backLeft.getPosition(),
             ),
         )
-    '''
-    def updateOdometry2(self, useAprilTags:bool = True) -> None:
-        """Updates the field relative position of the robot."""
-        self.estimator.update(
-            #wpimath.geometry.Rotation2d(self.gyroradiansinit),
-            self.angler.getRotation2d(),
-            (
-                self.frontLeft.getPosition(),
-                self.frontRight.getPosition(),
-                self.backRight.getPosition(),
-                self.backLeft.getPosition(),
-            ),
-        )
-        
-        if useAprilTags:
-            LimelightHelpers.setRobotOrientation(
-                "limelight", 
-                self.getRotation().degrees(), self.angler.getRate(), 
-                self.angler.getPitch(), self.angler.getRawGyroY(), 
-                self.angler.getRoll(), self.angler.getRawGyroX()
-                )
-            estimate: LimelightHelpers.PoseEstimate = LimelightHelpers.PoseEstimate.getRobotPoseEstimate(self, "limelight", "botpose_orb_wpiblue")
-
-            if estimate.tagCount > 0:
-                self.estimator.setVisionMeasurementStdDevs([0.7, 0.7, 9999999])
-                self.estimator.addVisionMeasurement(estimate.pose, estimate.timestamp)
-    '''
                 
     #NOTE
     def follow_trajectory(self, sample):
@@ -330,6 +302,10 @@ class Drivetrain:
     def resetGyro(self):
         self.angler.reset()
     
+    def getGyroAngle(self):
+        self.angle = self.angler.getRotation2d()
+        return self.angle
+    
     def UpdateEstimator(self):
         self.estimator.update(
             self.angler.getRotation2d(),
@@ -340,7 +316,10 @@ class Drivetrain:
                 self.backLeft.getPosition(),
             ]
         )
-    
+    '''
+    def addVision(self, x, y, rot):
+        self.estimator.addVisionMeasurement(wpimath.geometry.Pose2d(x, y, rot), self.period)
+    '''
     def getPose(self) -> wpimath.geometry.Pose2d:
         return self.estimator.getEstimatedPosition()
     
