@@ -19,11 +19,12 @@ robotpy_extras = [
     # "pathplannerlib",
     #"phoenix5",
     # "playingwithfusion",
-    "rev"
+    "rev",
     #"sleipnirgroup-choreolib",
     # "romi",
     # "sim",
-    # "xrp"
+    # "xrp",
+    "ctre"
 ]
 
 # Other pip packages to install

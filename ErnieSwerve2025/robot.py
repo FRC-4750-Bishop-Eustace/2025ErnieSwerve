@@ -30,7 +30,8 @@ from cscore import CameraServer
 from wpilib import SmartDashboard
 import choreo
 from lidar import TFMini
-from BNO055 import BOO055
+from BNO055 import BNO055
+from climb import Climber
 
 class MyRobot(wpilib.TimedRobot):
     def robotInit(self) -> None:
@@ -38,9 +39,9 @@ class MyRobot(wpilib.TimedRobot):
         self.controller = wpilib.Joystick(variables.joystickPort1)
         self.controller2 = wpilib.Joystick(variables.joystickPort2)
         self.swerve = drivetrain.Drivetrain()
+
         #self.odometry = 
 
-        self.elevator = elevator.Elevator(16, 17, [100, 200, 300, 400])
         #self.limelight = limelight.PoseEstimate(pose, timestamp, latency, tagCount, tagSpan, avgTagDist, avgTagArea, fiducials)
 
         # navxGyro is a file to test the navx Gyro. This can be ignored/commented out.
@@ -71,13 +72,20 @@ class MyRobot(wpilib.TimedRobot):
             pass
         '''
 
-        self.luna = TFMini(wpilib.SerialPort.Port.kMXP)
-        self.bno055 = BOO055(port=wpilib.SerialPort.Port.kMXP)
+        # Subsystems
+        self.navxGyro = navxGyro.Gyro()
+        self.elevator = elevator.Elevator(16, 17, [100, 200, 300, 400])
+        self.lidar = TFMini(0)
+        self.bno055 = BNO055(port=wpilib.SerialPort.Port.kMXP)
+        self.climb = Climber(0, 0)
 
     def robotPeriodic(self):
         self.swerve.updateOdometry(True)
-        distance = self.tfluna.readDistanceCM()
+
+        distance = self.lidar.getDistance()
         SmartDashboard.putNumber("TF Mini Distance (CM)", distance)
+
+        self.climb.set(Climber.ClimbState.kStateStop)
 
     #FUTURE
     def autonomousInit(self):

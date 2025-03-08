@@ -1,25 +1,23 @@
-import wpilib
-import struct
+import ctre
+import time
 
 class TFMini:
-    def __init__(self, port: wpilib.SerialPort.Port) -> None:
-        self.serial = wpilib.SerialPort(115200, port)
-        self.serial.setTimeout(1.0)
+    def __init__(self, canID: int) -> None:
+        self.device = ctre.CANifier(canID)
+        self.lastTime = time.time()
+        self.lastState = self.device.getGeneralInput(ctre.CANifier.GeneralPin.SPI_CLK)
 
-    def getDistanceCM(self) -> float:
-        """Read the distance in centimeters from the TF Mini sensor."""
-        data = self.serial.read(9)
-        if len(data) == 9 and [data[0], data[1]] == 0x59:
-            return struct.unpack('<H', data[2:4])[0]
-        return -1.0  # Return -1.0 if reading fails
-    
-    def getDistanceIN(self) -> float:
-        """Read the distance in inches from the TF Mini sensor."""
-        data = self.serial.read(9)
-        if len(data) == 9 and [data[0], data[1]] == 0x59:
-            return struct.unpack('<H', data[2:4])[0] / 2.54
-        return -1.0  # Return -1.0 if reading fails
+    def getDistance(self) -> float:
+        currentTime = time.time()
+        currentState = self.device.getGeneralInput(ctre.CANifier.GeneralPin.SPI_CLK)
 
-    def close(self) -> None:
-        """Close the serial port."""
-        self.serial.close()
+        if currentState != self.lastState:
+            period = currentTime - self.lastTime
+            self.lastTime = currentTime
+            self.lastState = currentState
+            distance = period * 100000.0 / 10.0  # Convert period to distance in cm
+            return distance
+        return -1.0
+
+    def isValid(self) -> bool:
+        return self.getDistance() > 0
